@@ -681,9 +681,8 @@ export default function Billing({ state, dispatch }) {
                                   {paint.quantity} L available
                                 </span>
                                 <span
-                                  className={`badge ${
-                                    isOut ? "badge-danger" : isLow ? "badge-warning" : "badge-success"
-                                  }`}
+                                  className={`badge ${isOut ? "badge-danger" : isLow ? "badge-warning" : "badge-success"
+                                    }`}
                                   style={{ fontSize: "0.75rem", padding: "0.125rem 0.5rem" }}
                                 >
                                   {isOut ? "Out of Stock" : isLow ? "Low Stock" : "In Stock"}
@@ -775,19 +774,18 @@ export default function Billing({ state, dispatch }) {
                       </span>
                     </div>
                     <span
-                      className={`badge ${
-                        currentSelectedPaint.quantity <= 0
-                          ? "badge-danger"
-                          : currentSelectedPaint.quantity <= 15
+                      className={`badge ${currentSelectedPaint.quantity <= 0
+                        ? "badge-danger"
+                        : currentSelectedPaint.quantity <= 15
                           ? "badge-warning"
                           : "badge-success"
-                      }`}
+                        }`}
                     >
                       {currentSelectedPaint.quantity <= 0
                         ? "Out of Stock"
                         : currentSelectedPaint.quantity <= 15
-                        ? "Low Stock"
-                        : "In Stock"}
+                          ? "Low Stock"
+                          : "In Stock"}
                     </span>
                   </div>
 
@@ -882,12 +880,12 @@ export default function Billing({ state, dispatch }) {
               <div style={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "10px", borderBottom: "1px solid #ddd", paddingBottom: "2px", marginBottom: "4px" }}>
                 Supplying Location Address :
               </div>
-              <div style={{ fontWeight: "bold" }}>KANSAI NEROLAC PAINTS LTD (D989)</div>
+              <div style={{ fontWeight: "bold" }}>PaintCorp LTD (D989)</div>
               <div>TAMILNADU WAREHOUSING CORP GODOWN NO 5, NO 6</div>
               <div>STC COLLEGE ROAD, TIRUNELVELI-627007</div>
               <div>Tamil Nadu</div>
-              <div>Tel - 9962201663 / 7824872311</div>
-              <div style={{ fontWeight: "bold", marginTop: "2px" }}>GSTIN- 33AAACG1376N1ZJ</div>
+              <div>Tel - 1234567890 / 2589631478</div>
+              <div style={{ fontWeight: "bold", marginTop: "2px" }}>GSTIN- 33ABCDE1234F1Z5</div>
             </div>
 
             {/* Box 2: Bill To Party */}

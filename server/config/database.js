@@ -50,15 +50,21 @@ const mockPool = {
   async query(sql, params = []) {
     const sqlNorm = sql.replace(/\s+/g, " ").trim();
 
-    // 1. SELECT queries targeting users by email (handles SELECT *, SELECT id, or SELECT id, email)
-    if (sqlNorm.includes("FROM users") && (sqlNorm.includes("LOWER(email)") || sqlNorm.includes("email = ?"))) {
-      const email = params[0];
+    // 1. SELECT queries targeting users (handles COUNT(*), email lookup, or SELECT *)
+    if (sqlNorm.includes("FROM users") && !sqlNorm.includes("INSERT INTO") && !sqlNorm.includes("UPDATE")) {
       const users = readJSON(FALLBACK_USERS_FILE);
-      console.log("[MOCK QUERY DEBUG] email:", email);
-      console.log("[MOCK QUERY DEBUG] users list size:", users.length);
-      const found = users.filter(u => u.email.toLowerCase() === email.toLowerCase());
-      console.log("[MOCK QUERY DEBUG] found:", found);
-      return [found];
+      if (sqlNorm.includes("COUNT(*)")) {
+        return [[{ count: users.length, cnt: users.length }]];
+      }
+      if (sqlNorm.includes("LOWER(email)") || sqlNorm.includes("email = ?")) {
+        const email = params[0];
+        console.log("[MOCK QUERY DEBUG] email:", email);
+        console.log("[MOCK QUERY DEBUG] users list size:", users.length);
+        const found = users.filter(u => email && u.email.toLowerCase() === email.toLowerCase());
+        console.log("[MOCK QUERY DEBUG] found:", found);
+        return [found];
+      }
+      return [users];
     }
 
     // 2. INSERT INTO users
@@ -171,9 +177,13 @@ const mockPool = {
     }
 
     // 10. SELECT * FROM products
-    if (sqlNorm.includes("FROM products")) {
+    if (sqlNorm.includes("FROM products") && !sqlNorm.includes("INSERT") && !sqlNorm.includes("UPDATE") && !sqlNorm.includes("DELETE")) {
       const file = path.join(__dirname, "..", "fallback_products.json");
-      return [readJSON(file)];
+      const list = readJSON(file);
+      if (sqlNorm.includes("COUNT(*)")) {
+        return [[{ count: list.length, cnt: list.length }]];
+      }
+      return [list];
     }
 
     // 11. INSERT INTO products
@@ -209,9 +219,13 @@ const mockPool = {
     }
 
     // 14. SELECT * FROM warehouse_stock
-    if (sqlNorm.includes("FROM warehouse_stock")) {
+    if (sqlNorm.includes("FROM warehouse_stock") && !sqlNorm.includes("UPDATE")) {
       const file = path.join(__dirname, "..", "fallback_stock.json");
-      return [readJSON(file)];
+      const list = readJSON(file);
+      if (sqlNorm.includes("COUNT(*)")) {
+        return [[{ count: list.length, cnt: list.length }]];
+      }
+      return [list];
     }
 
     // 15. UPDATE warehouse_stock
@@ -230,9 +244,13 @@ const mockPool = {
     }
 
     // 16. SELECT * FROM orders
-    if (sqlNorm.includes("FROM orders")) {
+    if (sqlNorm.includes("FROM orders") && !sqlNorm.includes("INSERT") && !sqlNorm.includes("UPDATE")) {
       const file = path.join(__dirname, "..", "fallback_orders.json");
-      return [readJSON(file)];
+      const list = readJSON(file);
+      if (sqlNorm.includes("COUNT(*)")) {
+        return [[{ count: list.length, cnt: list.length }]];
+      }
+      return [list];
     }
 
     // 17. INSERT INTO orders
@@ -394,25 +412,64 @@ async function initializeDatabase() {
       ) ENGINE=InnoDB;
     `);
 
-    // Check if admin user exists, if not seed the admin user
-    const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", ["admin@paintcorp.com"]);
-    if (rows.length === 0) {
+    // 1. Check & Seed default Admin user
+    const [userRows] = await pool.query("SELECT * FROM users WHERE email = ?", ["admin@paintcorp.com"]);
+    if (userRows.length === 0) {
       const adminPasswordHash = await bcrypt.hash("password123", 10);
       await pool.query(
         `INSERT INTO users (name, email, password, role, mobile, username, avatar, two_factor_enabled) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          "ERP Admin",
-          "admin@paintcorp.com",
-          adminPasswordHash,
-          "Administrator",
-          "1234567890",
-          "erp_admin",
-          "",
-          0
-        ]
+        ["ERP Admin", "admin@paintcorp.com", adminPasswordHash, "Administrator", "1234567890", "erp_admin", "", 0]
       );
       console.log("Seeded default administrator user admin@paintcorp.com / password123");
+    }
+
+    // 2. Check & Seed Products
+    const [productRows] = await pool.query("SELECT COUNT(*) AS cnt FROM products");
+    if (productRows[0].cnt === 0) {
+      await pool.query(`
+        INSERT INTO products (id, name, brand, category, color, finish, price, quantity, status) VALUES
+        ('PNT001', 'WeatherShield Max', 'Dulux', 'Exterior', 'Arctic White', 'Semi-Gloss', 3679.20, 120, 'In Stock'),
+        ('PNT002', 'Royale Luxury Emulsion', 'Asian Paints', 'Interior', 'Soft Beige', 'Matte', 3160.00, 85, 'In Stock'),
+        ('PNT003', 'Super Premium Enamel', 'Nippon', 'Wood & Metal', 'Forest Green', 'Gloss', 2399.20, 15, 'Low Stock'),
+        ('PNT004', 'Aquashield Waterproofing', 'Berger', 'Exterior', 'Slate Gray', 'Matte', 4320.00, 60, 'In Stock'),
+        ('PNT005', 'EasyClean Stain Resistant', 'Dulux', 'Interior', 'Lemon Yellow', 'Satin', 2799.20, 8, 'Low Stock'),
+        ('PNT006', 'UltraHide Primer', 'Nippon', 'Primer', 'Neutral White', 'Matte', 1960.00, 0, 'Out of Stock'),
+        ('PNT007', 'Apex Ultima Protect', 'Asian Paints', 'Exterior', 'Terracotta Red', 'Satin', 4660.00, 110, 'In Stock');
+      `);
+      console.log("Seeded initial product catalog into MySQL.");
+    }
+
+    // 3. Check & Seed Warehouse Stock
+    const [stockRows] = await pool.query("SELECT COUNT(*) AS cnt FROM warehouse_stock");
+    if (stockRows[0].cnt === 0) {
+      await pool.query(`
+        INSERT INTO warehouse_stock (id, paint_id, paint_name, brand, warehouse, quantity, min_quantity, status) VALUES
+        (1, 'PNT001', 'WeatherShield Max', 'Dulux', 'Central Warehouse A', 80, 20, 'In Stock'),
+        (2, 'PNT001', 'WeatherShield Max', 'Dulux', 'East Wing Depot', 40, 15, 'In Stock'),
+        (3, 'PNT002', 'Royale Luxury Emulsion', 'Asian Paints', 'Central Warehouse A', 50, 20, 'In Stock'),
+        (4, 'PNT002', 'Royale Luxury Emulsion', 'Asian Paints', 'South Gate facility', 35, 15, 'In Stock'),
+        (5, 'PNT003', 'Super Premium Enamel', 'Nippon', 'Central Warehouse A', 5, 20, 'Low Stock'),
+        (6, 'PNT003', 'Super Premium Enamel', 'Nippon', 'East Wing Depot', 10, 12, 'Low Stock'),
+        (7, 'PNT004', 'Aquashield Waterproofing', 'Berger', 'Central Warehouse A', 60, 20, 'In Stock'),
+        (8, 'PNT005', 'EasyClean Stain Resistant', 'Dulux', 'Central Warehouse A', 8, 15, 'Low Stock'),
+        (9, 'PNT006', 'UltraHide Primer', 'Nippon', 'East Wing Depot', 0, 25, 'Out of Stock'),
+        (10, 'PNT007', 'Apex Ultima Protect', 'Asian Paints', 'South Gate facility', 110, 30, 'In Stock');
+      `);
+      console.log("Seeded initial warehouse stock data into MySQL.");
+    }
+
+    // 4. Check & Seed Orders
+    const [orderRows] = await pool.query("SELECT COUNT(*) AS cnt FROM orders");
+    if (orderRows[0].cnt === 0) {
+      await pool.query(`
+        INSERT INTO orders (id, customer_name, customer_phone, customer_address, paint_name, paint_id, quantity, price, order_date, status) VALUES
+        ('ORD101', 'Alex Mercer', '+1 (555) 019-2834', '452 Pine St, New York, NY', 'WeatherShield Max', 'PNT001', 10, 3679.20, '2026-08-07', 'Delivered'),
+        ('ORD102', 'Sarah Connor', '+1 (555) 022-9110', '882 Oak Ave, Los Angeles, CA', 'Royale Luxury Emulsion', 'PNT002', 5, 3160.00, '2026-08-08', 'Pending'),
+        ('ORD103', 'Bruce Wayne', '+1 (555) 007-1939', '1007 Mountain Drive, Gotham', 'Aquashield Waterproofing', 'PNT004', 25, 4320.00, '2026-08-08', 'Processing'),
+        ('ORD104', 'Clark Kent', '+1 (555) 045-1234', '344 Clinton St, Metropolis', 'Super Premium Enamel', 'PNT003', 2, 2399.20, '2026-08-08', 'Packed');
+      `);
+      console.log("Seeded initial customer orders data into MySQL.");
     }
   } catch (error) {
     console.warn(`[DATABASE WARNING] MySQL database failed to connect: ${error.message}`);

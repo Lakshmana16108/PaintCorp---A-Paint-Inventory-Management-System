@@ -274,25 +274,26 @@ const mockPool = {
 
 async function initializeDatabase() {
   const host = process.env.DB_HOST || "localhost";
-  const port = process.env.DB_PORT || 3306;
+  const port = Number(process.env.DB_PORT) || 3306;
   const user = process.env.DB_USER || "root";
   const password = process.env.DB_PASSWORD || "";
-  const database = process.env.DB_NAME || "paintcorp_auth";
+  const database = process.env.DB_NAME || "paint_inventory";
+  const ssl = (process.env.DB_SSL === "true" || (host && host.includes("tidbcloud.com")))
+    ? { minVersion: "TLSv1.2", rejectUnauthorized: true }
+    : undefined;
 
   try {
     // First connection to establish database if not exists
-    const connection = await mysql.createConnection({
-      host,
-      port,
-      user,
-      password
-    });
+    const connectionConfig = { host, port, user, password };
+    if (ssl) connectionConfig.ssl = ssl;
+
+    const connection = await mysql.createConnection(connectionConfig);
 
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\``);
     await connection.end();
 
     // Create the pool with the specific database
-    pool = mysql.createPool({
+    const poolConfig = {
       host,
       port,
       user,
@@ -301,7 +302,10 @@ async function initializeDatabase() {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0
-    });
+    };
+    if (ssl) poolConfig.ssl = ssl;
+
+    pool = mysql.createPool(poolConfig);
 
     console.log(`Connected to MySQL database: ${database}`);
 

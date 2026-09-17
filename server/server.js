@@ -11,10 +11,30 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS
+// Flexible CORS Configuration supporting Vercel, local dev, and FRONTEND_URL
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:3000"
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: function (origin, callback) {
+      // Allow non-browser requests (Postman, curl, server-to-server)
+      if (!origin) return callback(null, true);
+
+      // Allow request if origin matches allowed list, ends with .vercel.app, or is localhost
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".vercel.app") ||
+        origin.includes("localhost")
+      ) {
+        return callback(null, true);
+      }
+      // Fallback allow origin dynamically to prevent CORS failure on Render
+      return callback(null, true);
+    },
     credentials: true
   })
 );

@@ -1,0 +1,102 @@
+[
+  {
+    "id": 1,
+    "paint_id": "PNT001",
+    "paint_name": "WeatherShield Max",
+    "brand": "Dulux",
+    "warehouse": "Central Warehouse A",
+    "quantity": 80,
+    "min_quantity": 20,
+    "status": "In Stock"
+  },
+  {
+    "id": 2,
+    "paint_id": "PNT001",
+    "paint_name": "WeatherShield Max",
+    "brand": "Dulux",
+    "warehouse": "East Wing Depot",
+    "quantity": 40,
+    "min_quantity": 15,
+    "status": "In Stock"
+  },
+  {
+    "id": 3,
+    "paint_id": "PNT002",
+    "paint_name": "Royale Luxury Emulsion",
+    "brand": "Asian Paints",
+    "warehouse": "Central Warehouse A",
+    "quantity": 50,
+    "min_quantity": 20,
+    "status": "In Stock"
+  },
+  {
+    "id": 4,
+    "paint_id": "PNT002",
+    "paint_name": "Royale Luxury Emulsion",
+    "brand": "Asian Paints",
+    "warehouse": "South Gate facility",
+    "quantity": 35,
+    "min_quantity": 15,
+    "status": "In Stock"
+  },
+  {
+    "id": 5,
+    "paint_id": "PNT003",
+    "paint_name": "Super Premium Enamel",
+    "brand": "Nippon",
+    "warehouse": "Central Warehouse A",
+    "quantity": 5,
+    "min_quantity": 20,
+    "status": "Low Stock"
+  },
+  {
+    "id": 6,
+    "paint_id": "PNT003",
+    "paint_name": "Super Premium Enamel",
+    "brand": "Nippon",
+    "warehouse": "East Wing Depot",
+    "quantity": 10,
+    "min_quantity": 12,
+    "status": "Low Stock"
+  },
+  {
+    "id": 7,
+    "paint_id": "PNT004",
+    "paint_name": "Aquashield Waterproofing",
+    "brand": "Berger",
+    "warehouse": "Central Warehouse A",
+    "quantity": 60,
+    "min_quantity": 20,
+    "status": "In Stock"
+  },
+  {
+    "id": 8,
+    "paint_id": "PNT005",
+    "paint_name": "EasyClean Stain Resistant",
+    "brand": "Dulux",
+    "warehouse": "Central Warehouse A",
+    "quantity": 8,
+    "min_quantity": 15,
+    "status": "Low Stock"
+  },
+  {
+    "id": 9,
+    "paint_id": "PNT006",
+    "paint_name": "UltraHide Primer",
+    "brand": "Nippon",
+    "warehouse": "East Wing Depot",
+    "quantity": 0,
+    "min_quantity": 25,
+    "status": "Out of Stock"
+  },
+  {
+    "id": 10,
+    "paint_id": "PNT007",
+    "paint_name": "Apex Ultima Protect",
+    "brand": "Asian Paints",
+    "warehouse": "South Gate facility",
+    "quantity": 110,
+    "min_quantity": 30,
+    "status": "In Stock"
+  }
+]

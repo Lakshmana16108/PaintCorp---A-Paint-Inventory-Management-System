@@ -172,7 +172,7 @@ export default function Billing({ state, dispatch }) {
 
   // Computed Totals & Discretionary Discounts matching Enterprise Tax Invoice math
   const subtotal = useMemo(() => {
-    return invoiceItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    return invoiceItems.reduce((acc, item) => acc + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
   }, [invoiceItems]);
 
   const cashDiscount = useMemo(() => subtotal * 0.05, [subtotal]); // 5% Cash Discount
@@ -182,13 +182,27 @@ export default function Billing({ state, dispatch }) {
   const grandTotal = useMemo(() => assessableValue + cgst + sgst, [assessableValue, cgst, sgst]);
 
   const totalPacks = useMemo(() => {
-    return invoiceItems.reduce((acc, item) => acc + item.quantity, 0);
+    return invoiceItems.reduce((acc, item) => acc + (Number(item.quantity) || 0), 0);
   }, [invoiceItems]);
 
   // Selected Paint details memoized
   const currentSelectedPaint = useMemo(() => {
-    return paints.find((p) => p.id === selectedPaintId) || null;
-  }, [paints, selectedPaintId]);
+    if (selectedPaintId) {
+      return paints.find((p) => p.id === selectedPaintId) || null;
+    }
+    if (paintSearchQuery.trim()) {
+      const q = paintSearchQuery.trim().toLowerCase();
+      return (
+        paints.find(
+          (p) =>
+            p.id.toLowerCase() === q ||
+            p.name.toLowerCase() === q ||
+            `${p.id} - ${p.name}`.toLowerCase() === q
+        ) || null
+      );
+    }
+    return null;
+  }, [paints, selectedPaintId, paintSearchQuery]);
 
   // Add Item to Invoice handler
   const handleAddItem = (e) => {
@@ -219,7 +233,7 @@ export default function Billing({ state, dispatch }) {
 
     if (existingIndex !== -1) {
       const updated = [...invoiceItems];
-      const newQty = updated[existingIndex].quantity + qty;
+      const newQty = (Number(updated[existingIndex].quantity) || 0) + qty;
 
       if (newQty > currentSelectedPaint.quantity) {
         showToast(
@@ -230,15 +244,16 @@ export default function Billing({ state, dispatch }) {
       }
 
       updated[existingIndex].quantity = newQty;
+      updated[existingIndex].price = Number(currentSelectedPaint.price) || 0;
       setInvoiceItems(updated);
     } else {
       setInvoiceItems((prev) => [
         ...prev,
         {
           paintId: currentSelectedPaint.id,
-          paintName: currentSelectedPaint.name,
-          brand: currentSelectedPaint.brand,
-          price: currentSelectedPaint.price,
+          paintName: currentSelectedPaint.name || "Paint Item",
+          brand: currentSelectedPaint.brand || "",
+          price: Number(currentSelectedPaint.price) || 0,
           quantity: qty
         }
       ]);
@@ -275,10 +290,8 @@ export default function Billing({ state, dispatch }) {
       errors.phone = "Invalid phone number format.";
     }
 
-    // Strict GST Number Validation
-    if (!customerGst.trim()) {
-      errors.gst = "GSTIN / GST Number is required to initiate billing.";
-    } else if (!validateGSTIN(customerGst)) {
+    // GST Number Validation (If provided, validate format; if blank, default to URP for retail)
+    if (customerGst.trim() && !validateGSTIN(customerGst)) {
       errors.gst = "Invalid GSTIN format. Must be 15 characters (e.g. 27ABCDE1234F1Z5).";
     }
 
@@ -293,9 +306,7 @@ export default function Billing({ state, dispatch }) {
   const handleGenerateInvoice = async (e) => {
     e.preventDefault();
     if (!validateBillingForm()) {
-      if (!customerGst.trim() || !validateGSTIN(customerGst)) {
-        showToast("Billing cannot initiate without a valid 15-character GSTIN number.", "danger");
-      } else if (invoiceItems.length === 0) {
+      if (invoiceItems.length === 0) {
         showToast("Cannot generate empty invoice. Add products first.", "danger");
       } else {
         showToast("Please fill in all customer details correctly.", "danger");
@@ -303,13 +314,15 @@ export default function Billing({ state, dispatch }) {
       return;
     }
 
+    const effectiveGst = customerGst.trim() ? customerGst.toUpperCase() : "URP";
+
     // Create Order records for each item in the invoice
     for (const item of invoiceItems) {
       const orderPayload = {
         id: `ORD${Math.floor(200 + Math.random() * 800)}`,
         customerName,
         customerPhone,
-        customerGst: customerGst.toUpperCase(),
+        customerGst: effectiveGst,
         customerAddress,
         paintId: item.paintId,
         paintName: item.paintName,
@@ -327,7 +340,7 @@ export default function Billing({ state, dispatch }) {
       dispatch({ type: ACTIONS.ADD_ORDER, payload: orderPayload });
     }
 
-    showToast(`Invoice ${invoiceNumber} generated for GSTIN ${customerGst.toUpperCase()}.`, "success");
+    showToast(`Invoice ${invoiceNumber} generated for GSTIN ${effectiveGst}.`, "success");
 
     localStorage.removeItem(DRAFT_STORAGE_KEY);
     setLastSaved(null);
@@ -449,8 +462,8 @@ export default function Billing({ state, dispatch }) {
               <div className="form-group row">
                 <div>
                   <label className="form-label" htmlFor="customer-gst" style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>GSTIN / GST Number *</span>
-                    <span style={{ fontSize: "0.75rem", color: "var(--primary)", fontWeight: 600 }}>Mandatory</span>
+                    <span>GSTIN / GST Number</span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 500 }}>Optional for Retail (Defaults to URP)</span>
                   </label>
                   <input
                     type="text"
@@ -975,7 +988,9 @@ export default function Billing({ state, dispatch }) {
             <tbody>
               {invoiceItems.length > 0 ? (
                 invoiceItems.map((item, idx) => {
-                  const itemValue = item.price * item.quantity;
+                  const numPrice = Number(item.price) || 0;
+                  const numQty = Number(item.quantity) || 0;
+                  const itemValue = numPrice * numQty;
                   const itemDiscount = itemValue * 0.05;
                   const itemTaxable = itemValue - itemDiscount;
                   const itemTax = itemTaxable * 0.18;
@@ -985,13 +1000,13 @@ export default function Billing({ state, dispatch }) {
                     <tr key={item.paintId || idx} style={{ textAlign: "center" }}>
                       <td style={{ border: "1px solid #000", padding: "4px", fontWeight: "bold" }}>{item.paintId}</td>
                       <td style={{ border: "1px solid #000", padding: "4px", textAlign: "left" }}>
-                        <strong>{item.paintName.toUpperCase()}</strong><br />
-                        <span style={{ fontSize: "8px", color: "#444" }}>GST: CGST 9% + SGST 9% | Brand: {item.brand}</span>
+                        <strong>{(item.paintName || "").toUpperCase()}</strong><br />
+                        <span style={{ fontSize: "8px", color: "#444" }}>GST: CGST 9% + SGST 9% | Brand: {item.brand || ""}</span>
                       </td>
                       <td style={{ border: "1px solid #000", padding: "4px" }}>3214.10.00</td>
-                      <td style={{ border: "1px solid #000", padding: "4px" }}>{item.quantity}</td>
-                      <td style={{ border: "1px solid #000", padding: "4px" }}>{item.quantity}.00</td>
-                      <td style={{ border: "1px solid #000", padding: "4px" }}>{item.price.toFixed(2)}</td>
+                      <td style={{ border: "1px solid #000", padding: "4px" }}>{numQty}</td>
+                      <td style={{ border: "1px solid #000", padding: "4px" }}>{numQty}.00</td>
+                      <td style={{ border: "1px solid #000", padding: "4px" }}>{numPrice.toFixed(2)}</td>
                       <td style={{ border: "1px solid #000", padding: "4px" }}>{itemValue.toFixed(2)}</td>
                       <td style={{ border: "1px solid #000", padding: "4px" }}>{itemDiscount.toFixed(2)}-</td>
                       <td style={{ border: "1px solid #000", padding: "4px", fontWeight: "bold" }}>{itemTaxable.toFixed(2)}</td>

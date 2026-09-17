@@ -9,6 +9,9 @@ let useFallback = false;
 
 const FALLBACK_USERS_FILE = path.join(__dirname, "..", "fallback_users.json");
 const FALLBACK_OTPS_FILE = path.join(__dirname, "..", "fallback_otps.json");
+const FALLBACK_PRODUCTS_FILE = path.join(__dirname, "..", "fallback_products.json");
+const FALLBACK_STOCK_FILE = path.join(__dirname, "..", "fallback_stock.json");
+const FALLBACK_ORDERS_FILE = path.join(__dirname, "..", "fallback_orders.json");
 
 // Helper functions for fallback JSON database
 function readJSON(file) {
@@ -43,6 +46,51 @@ async function seedFallback() {
     });
     writeJSON(FALLBACK_USERS_FILE, users);
     console.log("[FALLBACK] Seeded default administrator user admin@paintcorp.com / password123");
+  }
+
+  const products = readJSON(FALLBACK_PRODUCTS_FILE);
+  if (products.length === 0) {
+    const defaultProducts = [
+      { id: "PNT001", name: "WeatherShield Max", brand: "Dulux", category: "Exterior", color: "Arctic White", finish: "Semi-Gloss", price: 3679.20, quantity: 120, status: "In Stock" },
+      { id: "PNT002", name: "Royale Luxury Emulsion", brand: "Asian Paints", category: "Interior", color: "Soft Beige", finish: "Matte", price: 3160.00, quantity: 85, status: "In Stock" },
+      { id: "PNT003", name: "Super Premium Enamel", brand: "Nippon", category: "Wood & Metal", color: "Forest Green", finish: "Gloss", price: 2399.20, quantity: 15, status: "Low Stock" },
+      { id: "PNT004", name: "Aquashield Waterproofing", brand: "Berger", category: "Exterior", color: "Slate Gray", finish: "Matte", price: 4320.00, quantity: 60, status: "In Stock" },
+      { id: "PNT005", name: "EasyClean Stain Resistant", brand: "Dulux", category: "Interior", color: "Lemon Yellow", finish: "Satin", price: 2799.20, quantity: 8, status: "Low Stock" },
+      { id: "PNT006", name: "UltraHide Primer", brand: "Nippon", category: "Primer", color: "Neutral White", finish: "Matte", price: 1960.00, quantity: 0, status: "Out of Stock" },
+      { id: "PNT007", name: "Apex Ultima Protect", brand: "Asian Paints", category: "Exterior", color: "Terracotta Red", finish: "Satin", price: 4660.00, quantity: 110, status: "In Stock" }
+    ];
+    writeJSON(FALLBACK_PRODUCTS_FILE, defaultProducts);
+    console.log("[FALLBACK] Seeded fallback product catalog.");
+  }
+
+  const stock = readJSON(FALLBACK_STOCK_FILE);
+  if (stock.length === 0) {
+    const defaultStock = [
+      { id: 1, paint_id: "PNT001", paint_name: "WeatherShield Max", brand: "Dulux", warehouse: "Central Warehouse A", quantity: 80, min_quantity: 20, status: "In Stock" },
+      { id: 2, paint_id: "PNT001", paint_name: "WeatherShield Max", brand: "Dulux", warehouse: "East Wing Depot", quantity: 40, min_quantity: 15, status: "In Stock" },
+      { id: 3, paint_id: "PNT002", paint_name: "Royale Luxury Emulsion", brand: "Asian Paints", warehouse: "Central Warehouse A", quantity: 50, min_quantity: 20, status: "In Stock" },
+      { id: 4, paint_id: "PNT002", paint_name: "Royale Luxury Emulsion", brand: "Asian Paints", warehouse: "South Gate facility", quantity: 35, min_quantity: 15, status: "In Stock" },
+      { id: 5, paint_id: "PNT003", paint_name: "Super Premium Enamel", brand: "Nippon", warehouse: "Central Warehouse A", quantity: 5, min_quantity: 20, status: "Low Stock" },
+      { id: 6, paint_id: "PNT003", paint_name: "Super Premium Enamel", brand: "Nippon", warehouse: "East Wing Depot", quantity: 10, min_quantity: 12, status: "Low Stock" },
+      { id: 7, paint_id: "PNT004", paint_name: "Aquashield Waterproofing", brand: "Berger", warehouse: "Central Warehouse A", quantity: 60, min_quantity: 20, status: "In Stock" },
+      { id: 8, paint_id: "PNT005", paint_name: "EasyClean Stain Resistant", brand: "Dulux", warehouse: "Central Warehouse A", quantity: 8, min_quantity: 15, status: "Low Stock" },
+      { id: 9, paint_id: "PNT006", paint_name: "UltraHide Primer", brand: "Nippon", warehouse: "East Wing Depot", quantity: 0, min_quantity: 25, status: "Out of Stock" },
+      { id: 10, paint_id: "PNT007", paint_name: "Apex Ultima Protect", brand: "Asian Paints", warehouse: "South Gate facility", quantity: 110, min_quantity: 30, status: "In Stock" }
+    ];
+    writeJSON(FALLBACK_STOCK_FILE, defaultStock);
+    console.log("[FALLBACK] Seeded fallback warehouse stock.");
+  }
+
+  const orders = readJSON(FALLBACK_ORDERS_FILE);
+  if (orders.length === 0) {
+    const defaultOrders = [
+      { id: "ORD101", customer_name: "Alex Mercer", customer_phone: "+1 (555) 019-2834", customer_address: "452 Pine St, New York, NY", paint_name: "WeatherShield Max", paint_id: "PNT001", quantity: 10, price: 3679.20, order_date: "2026-08-07", status: "Delivered" },
+      { id: "ORD102", customer_name: "Sarah Connor", customer_phone: "+1 (555) 022-9110", customer_address: "882 Oak Ave, Los Angeles, CA", paint_name: "Royale Luxury Emulsion", paint_id: "PNT002", quantity: 5, price: 3160.00, order_date: "2026-08-08", status: "Pending" },
+      { id: "ORD103", customer_name: "Bruce Wayne", customer_phone: "+1 (555) 007-1939", customer_address: "1007 Mountain Drive, Gotham", paint_name: "Aquashield Waterproofing", paint_id: "PNT004", quantity: 25, price: 4320.00, order_date: "2026-08-08", status: "Processing" },
+      { id: "ORD104", customer_name: "Clark Kent", customer_phone: "+1 (555) 045-1234", customer_address: "344 Clinton St, Metropolis", paint_name: "Super Premium Enamel", paint_id: "PNT003", quantity: 2, price: 2399.20, order_date: "2026-08-08", status: "Packed" }
+    ];
+    writeJSON(FALLBACK_ORDERS_FILE, defaultOrders);
+    console.log("[FALLBACK] Seeded fallback orders.");
   }
 }
 

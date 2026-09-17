@@ -7,7 +7,12 @@ const { getPool } = require("../config/database");
 async function getAllPaints(req, res) {
   try {
     const pool = getPool();
-    const [rows] = await pool.query("SELECT * FROM products ORDER BY created_at DESC");
+    let rows;
+    try {
+      [rows] = await pool.query("SELECT * FROM products ORDER BY created_at DESC");
+    } catch (err) {
+      [rows] = await pool.query("SELECT * FROM products ORDER BY id ASC");
+    }
     return res.json(rows);
   } catch (error) {
     console.error("Get paints error:", error);

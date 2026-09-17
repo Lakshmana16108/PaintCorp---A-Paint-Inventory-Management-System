@@ -356,6 +356,13 @@ async function initializeDatabase() {
       ) ENGINE=InnoDB;
     `);
 
+    // Ensure created_at column exists if table was created previously without it
+    try {
+      await pool.query("ALTER TABLE products ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+    } catch (e) {
+      // Column already exists
+    }
+
     // Create Warehouse Stock Table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS warehouse_stock (

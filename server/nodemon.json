@@ -1,0 +1,7 @@
+{
+  "ignore": [
+    "fallback_users.json",
+    "fallback_otps.json",
+    "simulated_email.json"
+  ]
+}

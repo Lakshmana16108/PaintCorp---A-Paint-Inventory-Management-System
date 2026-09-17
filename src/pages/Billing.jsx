@@ -848,16 +848,16 @@ export default function Billing({ state, dispatch }) {
             <div style={{ flex: 1.5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <div style={{ width: "24px", height: "24px", backgroundColor: "#000", color: "#fff", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>
-                  K
+                  P
                 </div>
                 <div>
-                  <div style={{ fontWeight: 900, fontSize: "14px", letterSpacing: "0.5px" }}>KANSAI NEROLAC</div>
-                  <div style={{ fontWeight: 900, fontSize: "16px", letterSpacing: "1px", lineHeight: "1" }}>PAINTS LIMITED</div>
+                  <div style={{ fontWeight: 900, fontSize: "14px", letterSpacing: "0.5px" }}>PaintCorp</div>
+                  <div style={{ fontWeight: 900, fontSize: "16px", letterSpacing: "1px", lineHeight: "1" }}>PVT LTD</div>
                 </div>
               </div>
               <div style={{ fontSize: "9px", marginTop: "6px", color: "#333" }}>
                 <strong>Registered Office:</strong> 28th Floor, A-Wing, Marathon Futurex, N. M. Joshi Marg, Lower Parel, Mumbai - 400013<br />
-                Tel: 022 4060 2500 &bull; Website: www.nerolac.com &bull; Toll Free: 1800 209 2092
+                Tel: 022 4060 2500 &bull; Website: www.PaintCorp.com &bull; Toll Free: 1800 209 2092
               </div>
             </div>
             <div style={{ flex: 1, textAlign: "right", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>

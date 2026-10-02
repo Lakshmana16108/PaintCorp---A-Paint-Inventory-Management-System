@@ -1,0 +1,79 @@
+[
+  {
+    "id": "PNT001",
+    "name": "WeatherShield Max",
+    "brand": "Dulux",
+    "category": "Exterior",
+    "color": "Arctic White",
+    "finish": "Semi-Gloss",
+    "price": 3679.2,
+    "quantity": 120,
+    "status": "In Stock"
+  },
+  {
+    "id": "PNT002",
+    "name": "Royale Luxury Emulsion",
+    "brand": "Asian Paints",
+    "category": "Interior",
+    "color": "Soft Beige",
+    "finish": "Matte",
+    "price": 3160,
+    "quantity": 85,
+    "status": "In Stock"
+  },
+  {
+    "id": "PNT003",
+    "name": "Super Premium Enamel",
+    "brand": "Nippon",
+    "category": "Wood & Metal",
+    "color": "Forest Green",
+    "finish": "Gloss",
+    "price": 2399.2,
+    "quantity": 15,
+    "status": "Low Stock"
+  },
+  {
+    "id": "PNT004",
+    "name": "Aquashield Waterproofing",
+    "brand": "Berger",
+    "category": "Exterior",
+    "color": "Slate Gray",
+    "finish": "Matte",
+    "price": 4320,
+    "quantity": 60,
+    "status": "In Stock"
+  },
+  {
+    "id": "PNT005",
+    "name": "EasyClean Stain Resistant",
+    "brand": "Dulux",
+    "category": "Interior",
+    "color": "Lemon Yellow",
+    "finish": "Satin",
+    "price": 2799.2,
+    "quantity": 8,
+    "status": "Low Stock"
+  },
+  {
+    "id": "PNT006",
+    "name": "UltraHide Primer",
+    "brand": "Nippon",
+    "category": "Primer",
+    "color": "Neutral White",
+    "finish": "Matte",
+    "price": 1960,
+    "quantity": 0,
+    "status": "Out of Stock"
+  },
+  {
+    "id": "PNT007",
+    "name": "Apex Ultima Protect",
+    "brand": "Asian Paints",
+    "category": "Exterior",
+    "color": "Terracotta Red",
+    "finish": "Satin",
+    "price": 4660,
+    "quantity": 110,
+    "status": "In Stock"
+  }
+]

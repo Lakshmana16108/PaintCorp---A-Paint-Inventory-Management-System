@@ -1,0 +1,101 @@
+[
+  {
+    "id": 1,
+    "user_id": 11,
+    "otp_hash": "4c5b63efd04f7fa74c3f3dc103d3c184f9128f50dc8783d990552dd22869e68d",
+    "expires_at": "2026-08-26T05:34:26.023Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-26T05:24:26.023Z"
+  },
+  {
+    "id": 2,
+    "user_id": 11,
+    "otp_hash": "9a44fee189aad8605b6708b9ace9fc47dd65121f0ee69380322eb9f3b374211a",
+    "expires_at": "2026-08-26T05:35:12.953Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-26T05:25:12.965Z"
+  },
+  {
+    "id": 3,
+    "user_id": 11,
+    "otp_hash": "d9e9411973ca30af7df1b38f6fae1e0dc1642f13b29fc5cb5b18ca993901ae79",
+    "expires_at": "2026-08-26T05:36:19.475Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-26T05:26:19.489Z"
+  },
+  {
+    "id": 4,
+    "user_id": 11,
+    "otp_hash": "5f0ec5059ff2a3be742018f411484de5c33eed289a50551f9d1b55cececd7e18",
+    "expires_at": "2026-08-26T05:36:51.272Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-26T05:26:51.281Z"
+  },
+  {
+    "id": 5,
+    "user_id": 11,
+    "otp_hash": "0fc7ae0730a1ae7216aa5b6d533a8143f9c9e96def2b6d4adb458b96c804750b",
+    "expires_at": "2026-08-27T07:12:21.197Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-27T07:02:21.225Z"
+  },
+  {
+    "id": 6,
+    "user_id": 11,
+    "otp_hash": "974e47eef5882fca7c0041098e218024f8374fb4f085cd3ac48dd4688a99a14f",
+    "expires_at": "2026-08-27T07:22:08.654Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-27T07:12:08.672Z"
+  },
+  {
+    "id": 7,
+    "user_id": 11,
+    "otp_hash": "62bea1545f491d6dcadfa516f0551414f31a8244f355e51e27426059a548d2b4",
+    "expires_at": "2026-08-27T09:00:53.036Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-27T08:50:53.051Z"
+  },
+  {
+    "id": 8,
+    "user_id": 11,
+    "otp_hash": "4a1798c4f591d5668e042254cd12c3aa567c09c1a243a6ee908667fbbc920821",
+    "expires_at": "2026-08-27T16:33:35.530Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-27T16:23:35.549Z"
+  },
+  {
+    "id": 9,
+    "user_id": 9,
+    "otp_hash": "d555bff58054fc5d4854d84c139f3538eb1d86a2142b7e898608a1623a991290",
+    "expires_at": "2026-08-31T10:40:29.762Z",
+    "attempts": 0,
+    "used": 1,
+    "created_at": "2026-08-31T10:30:29.781Z"
+  },
+  {
+    "id": 10,
+    "user_id": 9,
+    "otp_hash": "086121c34cf82e1d9dc8473623cd48bdf3a4cafc040ad0834b732b73ba7ba2fb",
+    "expires_at": "2026-08-31T10:43:01.124Z",
+    "attempts": 0,
+    "used": 0,
+    "created_at": "2026-08-31T10:33:01.153Z"
+  },
+  {
+    "id": 11,
+    "user_id": 10,
+    "otp_hash": "0bbf70e5d893a11c2e8727fa32b0b5dd930214482942a79accda69e899fdaf43",
+    "expires_at": "2026-08-31T11:15:20.466Z",
+    "attempts": 0,
+    "used": 0,
+    "created_at": "2026-08-31T11:05:20.479Z"
+  }
+]

@@ -2,6 +2,10 @@
   "ignore": [
     "fallback_users.json",
     "fallback_otps.json",
+    "fallback_products.json",
+    "fallback_stock.json",
+    "fallback_orders.json",
+    "fallback_order_items.json",
     "simulated_email.json"
   ]
 }

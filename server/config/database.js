@@ -2,6 +2,19 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const fs = require("fs");
 const path = require("path");
+
+// Load .env from server directory or project root
+const envPaths = [
+  path.join(__dirname, "..", ".env"),
+  path.join(__dirname, ".env"),
+  path.join(process.cwd(), "server", ".env"),
+  path.join(process.cwd(), ".env")
+];
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    require("dotenv").config({ path: envPath });
+  }
+}
 require("dotenv").config();
 
 let pool;
@@ -113,10 +126,16 @@ async function seedFallback() {
 
 const mockPool = {
   async query(sql, params = []) {
-    const sqlNorm = sql.replace(/\s+/g, " ").trim();
+    // Strip locking clauses so mock database treats them as standard SELECT queries
+    const sqlClean = sql
+      .replace(/\s+FOR\s+UPDATE\b/gi, "")
+      .replace(/\s+LOCK\s+IN\s+SHARE\s+MODE\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const sqlNorm = sqlClean;
 
     // 1. SELECT queries targeting users (handles COUNT(*), email lookup, or SELECT *)
-    if (sqlNorm.includes("FROM users") && !sqlNorm.includes("INSERT INTO") && !sqlNorm.includes("UPDATE")) {
+    if (sqlNorm.includes("FROM users") && !sqlNorm.includes("INSERT INTO") && !sqlNorm.startsWith("UPDATE")) {
       const users = readJSON(FALLBACK_USERS_FILE);
       if (sqlNorm.includes("COUNT(*)")) {
         return [[{ count: users.length, cnt: users.length }]];
@@ -242,7 +261,7 @@ const mockPool = {
     }
 
     // 10. SELECT * FROM products
-    if (sqlNorm.includes("FROM products") && !sqlNorm.includes("INSERT") && !sqlNorm.includes("UPDATE") && !sqlNorm.includes("DELETE")) {
+    if (sqlNorm.includes("FROM products") && !sqlNorm.startsWith("INSERT") && !sqlNorm.startsWith("UPDATE") && !sqlNorm.startsWith("DELETE")) {
       const file = path.join(__dirname, "..", "fallback_products.json");
       let list = readJSON(file);
       if (sqlNorm.includes("WHERE name = ?") && params && params[0]) {
@@ -276,14 +295,60 @@ const mockPool = {
       return [{ affectedRows: 1 }];
     }
 
-    // 12. UPDATE products
-    if (sqlNorm.includes("UPDATE products SET")) {
+    // 12a. UPDATE products (quantity deduction or addition from order creation/cancellation)
+    if (sqlNorm.startsWith("UPDATE products") && (sqlNorm.includes("quantity - ?") || sqlNorm.includes("quantity + ?"))) {
       const file = path.join(__dirname, "..", "fallback_products.json");
       const list = readJSON(file);
-      const id = params[8];
+      const isDeduct = sqlNorm.includes("quantity - ?");
+      const changeQty = Number(params[0]) || 0;
+      const id = params[params.length - 1];
+      const item = list.find(p => p.id === id);
+      if (item) {
+        if (isDeduct) {
+          item.quantity = Math.max(0, Number(item.quantity || 0) - changeQty);
+        } else {
+          item.quantity = Number(item.quantity || 0) + changeQty;
+        }
+        item.status = item.quantity <= 0 ? "Out of Stock" : (item.quantity <= 15 ? "Low Stock" : "In Stock");
+        writeJSON(file, list);
+      }
+      return [{ affectedRows: 1 }];
+    }
+
+    // 12b. UPDATE products (quantity & status sync from stock controller: 3 params)
+    if (sqlNorm.startsWith("UPDATE products") && sqlNorm.includes("SET quantity = ?, status = ? WHERE id = ?")) {
+      const file = path.join(__dirname, "..", "fallback_products.json");
+      const list = readJSON(file);
+      const qty = Number(params[0]) || 0;
+      const status = params[1];
+      const id = params[2];
+      const item = list.find(p => p.id === id);
+      if (item) {
+        item.quantity = qty;
+        item.status = status;
+        writeJSON(file, list);
+      }
+      return [{ affectedRows: 1 }];
+    }
+
+    // 12c. UPDATE products (full admin product update: 9 params)
+    if (sqlNorm.startsWith("UPDATE products SET")) {
+      const file = path.join(__dirname, "..", "fallback_products.json");
+      const list = readJSON(file);
+      const id = params[params.length - 1];
       const idx = list.findIndex(p => p.id === id);
       if (idx !== -1) {
-        list[idx] = { id, name: params[0], brand: params[1], category: params[2], color: params[3], finish: params[4], price: Number(params[5]), quantity: Number(params[6]), status: params[7] };
+        list[idx] = { 
+          id, 
+          name: params[0], 
+          brand: params[1], 
+          category: params[2], 
+          color: params[3], 
+          finish: params[4], 
+          price: Number(params[5]), 
+          quantity: Number(params[6]), 
+          status: params[7] 
+        };
         writeJSON(file, list);
       }
       return [{ affectedRows: 1 }];
@@ -299,27 +364,104 @@ const mockPool = {
     }
 
     // 14. SELECT * FROM warehouse_stock
-    if (sqlNorm.includes("FROM warehouse_stock") && !sqlNorm.includes("UPDATE")) {
+    if (sqlNorm.includes("FROM warehouse_stock") && !sqlNorm.startsWith("UPDATE") && !sqlNorm.startsWith("INSERT")) {
       const file = path.join(__dirname, "..", "fallback_stock.json");
-      const list = readJSON(file);
+      let list = readJSON(file);
       if (sqlNorm.includes("COUNT(*)")) {
         return [[{ count: list.length, cnt: list.length }]];
+      }
+      if (sqlNorm.includes("COALESCE(SUM(quantity), 0)")) {
+        const pid = params[0];
+        const sum = list.filter(s => s.paint_id === pid).reduce((acc, s) => acc + (Number(s.quantity) || 0), 0);
+        return [[{ total_qty: sum }]];
+      }
+      if (sqlNorm.includes("DISTINCT warehouse")) {
+        const unique = [...new Set(list.map(s => s.warehouse))].map(w => ({ warehouse: w }));
+        return [unique];
+      }
+      if (sqlNorm.includes("WHERE paint_id = ?")) {
+        const pid = params[0];
+        list = list.filter(s => s.paint_id === pid);
+      } else if (sqlNorm.includes("WHERE id = ?")) {
+        const sid = Number(params[0]);
+        list = list.filter(s => s.id === sid);
+      }
+      if (sqlNorm.includes("LIMIT 1")) {
+        list = list.slice(0, 1);
       }
       return [list];
     }
 
     // 15. UPDATE warehouse_stock
-    if (sqlNorm.includes("UPDATE warehouse_stock")) {
+    if (sqlNorm.startsWith("UPDATE warehouse_stock")) {
       const file = path.join(__dirname, "..", "fallback_stock.json");
       const list = readJSON(file);
-      const id = Number(params[3]);
-      const item = list.find(s => s.id === id);
-      if (item) {
-        item.quantity = Number(params[0]);
-        item.min_quantity = Number(params[1]);
-        item.status = params[2];
+
+      if (sqlNorm.includes("SET paint_name = ?, brand = ? WHERE paint_id = ?")) {
+        const name = params[0];
+        const brand = params[1];
+        const pid = params[2];
+        list.forEach(s => {
+          if (s.paint_id === pid) {
+            s.paint_name = name;
+            s.brand = brand;
+          }
+        });
         writeJSON(file, list);
+        return [{ affectedRows: 1 }];
       }
+
+      if (sqlNorm.includes("quantity - ?") || sqlNorm.includes("GREATEST(0, quantity - ?)")) {
+        const deduct = Number(params[0]) || 0;
+        const id = Number(params[params.length - 1]);
+        const item = list.find(s => s.id === id);
+        if (item) {
+          item.quantity = Math.max(0, Number(item.quantity || 0) - deduct);
+          item.status = item.quantity <= 0 ? "Out of Stock" : (item.quantity <= (item.min_quantity || 15) ? "Low Stock" : "In Stock");
+          writeJSON(file, list);
+        }
+        return [{ affectedRows: 1 }];
+      }
+
+      if (sqlNorm.includes("quantity + ?")) {
+        const add = Number(params[0]) || 0;
+        const id = Number(params[params.length - 1]);
+        const item = list.find(s => s.id === id);
+        if (item) {
+          item.quantity = Number(item.quantity || 0) + add;
+          item.status = item.quantity <= 0 ? "Out of Stock" : (item.quantity <= (item.min_quantity || 15) ? "Low Stock" : "In Stock");
+          writeJSON(file, list);
+        }
+        return [{ affectedRows: 1 }];
+      }
+
+      if (params.length === 3) {
+        // UPDATE warehouse_stock SET quantity = ?, status = ? WHERE id = ?
+        const q = Number(params[0]);
+        const status = params[1];
+        const id = Number(params[2]);
+        const item = list.find(s => s.id === id);
+        if (item) {
+          item.quantity = q;
+          item.status = status;
+          writeJSON(file, list);
+        }
+        return [{ affectedRows: 1 }];
+      }
+
+      if (params.length >= 4) {
+        // UPDATE warehouse_stock SET quantity = ?, min_quantity = ?, status = ? WHERE id = ?
+        const id = Number(params[3]);
+        const item = list.find(s => s.id === id);
+        if (item) {
+          item.quantity = Number(params[0]);
+          item.min_quantity = Number(params[1]);
+          item.status = params[2];
+          writeJSON(file, list);
+        }
+        return [{ affectedRows: 1 }];
+      }
+
       return [{ affectedRows: 1 }];
     }
 
@@ -466,7 +608,7 @@ const mockPool = {
     }
 
     // 16g. General SELECT * FROM orders
-    if (sqlNorm.includes("FROM orders") && !sqlNorm.includes("INSERT") && !sqlNorm.includes("UPDATE")) {
+    if (sqlNorm.includes("FROM orders") && !sqlNorm.startsWith("INSERT") && !sqlNorm.startsWith("UPDATE")) {
       const file = path.join(__dirname, "..", "fallback_orders.json");
       const list = readJSON(file);
       if (sqlNorm.includes("COUNT(*)")) {
@@ -592,7 +734,7 @@ const mockPool = {
     }
 
     // 19c. General SELECT * FROM order_items
-    if (sqlNorm.includes("FROM order_items") && !sqlNorm.includes("INSERT")) {
+    if (sqlNorm.includes("FROM order_items") && !sqlNorm.startsWith("INSERT") && !sqlNorm.startsWith("UPDATE")) {
       const items = readJSON(FALLBACK_ORDER_ITEMS_FILE);
       if (sqlNorm.includes("WHERE order_id = ?")) {
         const orderId = params[0];

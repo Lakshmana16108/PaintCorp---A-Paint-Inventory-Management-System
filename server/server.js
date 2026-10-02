@@ -8,6 +8,19 @@ const stockRoutes = require("./routes/stockRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const salesRoutes = require("./routes/salesRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const fs = require("fs");
+const path = require("path");
+const envPaths = [
+  path.join(__dirname, ".env"),
+  path.join(__dirname, "..", ".env"),
+  path.join(process.cwd(), "server", ".env"),
+  path.join(process.cwd(), ".env")
+];
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    require("dotenv").config({ path: envPath });
+  }
+}
 require("dotenv").config();
 
 const app = express();

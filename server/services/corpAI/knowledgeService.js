@@ -22,6 +22,24 @@ function getKeywords(text) {
     .filter((w) => w.length > 2 && !STOPWORDS.has(w));
 }
 
+function resolveKnowledgeDir() {
+  const candidates = [
+    path.join(__dirname, "../../knowledge"),
+    path.join(__dirname, "../knowledge"),
+    path.join(process.cwd(), "server", "knowledge"),
+    path.join(process.cwd(), "knowledge"),
+    path.join(__dirname, "../../../server/knowledge")
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c) && fs.readdirSync(c).some((f) => f.endsWith(".md"))) {
+        return c;
+      }
+    } catch (e) {}
+  }
+  return path.join(__dirname, "../../knowledge");
+}
+
 class KnowledgeService {
   constructor() {
     this.documents = [];
@@ -34,17 +52,18 @@ class KnowledgeService {
    */
   loadDocuments() {
     try {
-      if (!fs.existsSync(KNOWLEDGE_DIR)) {
-        console.warn(`[Corp AI] Knowledge directory not found at ${KNOWLEDGE_DIR}`);
+      const knowledgeDir = resolveKnowledgeDir();
+      if (!fs.existsSync(knowledgeDir)) {
+        console.warn(`[Corp AI] Knowledge directory not found at ${knowledgeDir}`);
         return;
       }
 
-      const files = fs.readdirSync(KNOWLEDGE_DIR).filter((f) => f.endsWith(".md"));
+      const files = fs.readdirSync(knowledgeDir).filter((f) => f.endsWith(".md"));
       this.documents = [];
       this.sections = [];
 
       files.forEach((file) => {
-        const fullPath = path.join(KNOWLEDGE_DIR, file);
+        const fullPath = path.join(knowledgeDir, file);
         const content = fs.readFileSync(fullPath, "utf-8");
         const lines = content.split("\n");
         const titleLine = lines.find((l) => l.startsWith("# ")) || `# ${file}`;

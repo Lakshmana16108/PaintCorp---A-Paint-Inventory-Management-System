@@ -600,7 +600,7 @@ async function get_top_selling_products({ fromDate, toDate, limit = 5, naturalQu
   const pool = getPool();
   const maxLimit = Math.min(Number(limit) || 5, 20);
 
-  const [rows] = await pool.query(
+  let [rows] = await pool.query(
     `SELECT 
        oi.paint_id AS paintId,
        oi.paint_name AS paintName,
@@ -614,6 +614,30 @@ async function get_top_selling_products({ fromDate, toDate, limit = 5, naturalQu
      LIMIT ?`,
     [dates.fromDate, dates.toDate, maxLimit]
   );
+
+  // If no sales in default interval and query was general ("Top selling paints"),
+  // return all-time recorded top sellers so the user gets actual business data
+  if ((!rows || rows.length === 0) && !fromDate && !toDate) {
+    const [allTimeRows] = await pool.query(
+      `SELECT 
+         oi.paint_id AS paintId,
+         oi.paint_name AS paintName,
+         COALESCE(SUM(oi.quantity), 0) AS quantitySold,
+         COALESCE(SUM(oi.quantity * oi.price), 0) AS revenue
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       WHERE o.status != 'Cancelled'
+       GROUP BY oi.paint_id, oi.paint_name
+       ORDER BY quantitySold DESC, revenue DESC
+       LIMIT ?`,
+      [maxLimit]
+    );
+    if (allTimeRows && allTimeRows.length > 0) {
+      rows = allTimeRows;
+      dates.fromDate = "all-time";
+      dates.toDate = toDateStr(new Date());
+    }
+  }
 
   return {
     success: true,
@@ -639,7 +663,7 @@ async function get_revenue_by_product({ fromDate, toDate, limit = 5, naturalQuer
   const pool = getPool();
   const maxLimit = Math.min(Number(limit) || 5, 20);
 
-  const [rows] = await pool.query(
+  let [rows] = await pool.query(
     `SELECT 
        oi.paint_id AS paintId,
        oi.paint_name AS paintName,
@@ -653,6 +677,29 @@ async function get_revenue_by_product({ fromDate, toDate, limit = 5, naturalQuer
      LIMIT ?`,
     [dates.fromDate, dates.toDate, maxLimit]
   );
+
+  // If no sales in default interval and query was general, return all-time revenue leaders
+  if ((!rows || rows.length === 0) && !fromDate && !toDate) {
+    const [allTimeRows] = await pool.query(
+      `SELECT 
+         oi.paint_id AS paintId,
+         oi.paint_name AS paintName,
+         COALESCE(SUM(oi.quantity * oi.price), 0) AS revenue,
+         COALESCE(SUM(oi.quantity), 0) AS quantitySold
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       WHERE o.status != 'Cancelled'
+       GROUP BY oi.paint_id, oi.paint_name
+       ORDER BY revenue DESC, quantitySold DESC
+       LIMIT ?`,
+      [maxLimit]
+    );
+    if (allTimeRows && allTimeRows.length > 0) {
+      rows = allTimeRows;
+      dates.fromDate = "all-time";
+      dates.toDate = toDateStr(new Date());
+    }
+  }
 
   return {
     success: true,

@@ -29,7 +29,11 @@ async function chatWithAI(req, res) {
       metadata: result.metadata || null
     });
   } catch (error) {
-    console.error("[Corp AI Controller Error]:", error);
+    console.error(`[Corp AI Controller Error] ${req.method} ${req.originalUrl || req.url}:`, {
+      type: error.name || "AIProcessingError",
+      message: error.message,
+      stack: error.stack
+    });
     return res.status(500).json({
       success: false,
       error: "Unable to retrieve an answer right now. Please try again.",

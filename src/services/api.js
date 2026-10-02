@@ -1,5 +1,22 @@
-const rawApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "" : "http://localhost:5000");
-const API_URL = rawApiUrl ? rawApiUrl.replace(/\/+$/, "") : "";
+/**
+ * Clean environment-based API base URL configuration:
+ * - In production: defaults to "" (same-origin relative requests e.g. /api/...) when frontend & backend are co-deployed on Vercel.
+ *   If a custom remote VITE_API_URL is explicitly set and valid (not pointing to localhost or obsolete URLs), it will be used.
+ * - In development: defaults to "http://localhost:5000" unless overridden by VITE_API_URL.
+ */
+function resolveApiUrl() {
+  const envUrl = (import.meta.env.VITE_API_URL || "").trim();
+  if (import.meta.env.PROD) {
+    if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1") && !envUrl.includes("onrender.com")) {
+      return envUrl.replace(/\/+$/, "");
+    }
+    return "";
+  }
+  return envUrl ? envUrl.replace(/\/+$/, "") : "http://localhost:5000";
+}
+
+const API_URL = resolveApiUrl();
+
 
 /**
  * Helper to get authorization headers with JWT.

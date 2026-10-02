@@ -286,7 +286,12 @@ async function getSalesReport(req, res) {
       details
     });
   } catch (error) {
-    console.error("Sales report SQL error:", error);
+    console.error(`[Sales Controller Error] ${req.method} ${req.originalUrl || req.url}:`, {
+      type: error.name || "SalesQueryError",
+      message: error.message,
+      code: error.code || null,
+      stack: error.stack
+    });
     return res.status(500).json({
       success: false,
       error: "Unable to load sales data. Please try again."

@@ -23,7 +23,7 @@ function getDefaultDateRange() {
   const today = new Date();
   const to = today.toISOString().split("T")[0];
   const fromDate = new Date(today);
-  fromDate.setDate(fromDate.getDate() - 30);
+  fromDate.setDate(fromDate.getDate() - 90);
   const from = fromDate.toISOString().split("T")[0];
   return { from, to };
 }
@@ -394,26 +394,29 @@ export default function SalesDashboard() {
         </div>
       )}
 
-      {/* Empty State Banner when no sales exist in the selected range */}
-      {!loading && !error && !hasSales && (
-        <div
-          className="card"
-          id="sales-empty-state"
-          style={{
-            padding: "2rem",
-            textAlign: "center",
-            backgroundColor: "var(--warning-bg)",
-            color: "var(--warning-text)",
-            borderRadius: "var(--radius-lg)",
-            fontWeight: 600
-          }}
-        >
-          No sales data available for the selected date range.
-        </div>
-      )}
+      {/* Analytics Content - Only rendered when data is loaded successfully without error */}
+      {!loading && !error && (
+        <>
+          {/* Empty State Banner when no sales exist in the selected range */}
+          {!hasSales && (
+            <div
+              className="card"
+              id="sales-empty-state"
+              style={{
+                padding: "2rem",
+                textAlign: "center",
+                backgroundColor: "var(--warning-bg)",
+                color: "var(--warning-text)",
+                borderRadius: "var(--radius-lg)",
+                fontWeight: 600
+              }}
+            >
+              No sales data available for the selected date range.
+            </div>
+          )}
 
-      {/* KPI Cards Grid */}
-      <div className="metrics-grid" id="sales-kpi-grid">
+          {/* KPI Cards Grid */}
+          <div className="metrics-grid" id="sales-kpi-grid">
         {/* KPI 1: Total Revenue */}
         <div className="card metric-card" id="sales-kpi-revenue">
           <div className="metric-info">
@@ -765,6 +768,8 @@ export default function SalesDashboard() {
           onPageChange={setCurrentPage}
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

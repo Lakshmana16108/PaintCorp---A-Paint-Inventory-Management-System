@@ -314,6 +314,11 @@ class CorpAIService {
       }
     }
 
+    // Google Gemini API strictly requires the first turn to have role 'user'
+    while (contents.length > 0 && contents[0].role === "model") {
+      contents.shift();
+    }
+
     // Add current user prompt
     contents.push({ role: "user", parts: [{ text: message }] });
 
@@ -347,12 +352,12 @@ class CorpAIService {
         toolsUsed.push(fnName);
 
         // Map function name to primary source category
-        if (fnName.includes("stock") || fnName.includes("product") || fnName.includes("inventory")) {
-          primarySource = "inventory";
-        } else if (fnName.includes("sales") || fnName.includes("revenue")) {
+        if (fnName.includes("selling") || fnName.includes("sales") || fnName.includes("revenue")) {
           primarySource = "sales";
         } else if (fnName.includes("order")) {
           primarySource = "orders";
+        } else if (fnName.includes("stock") || fnName.includes("product") || fnName.includes("inventory")) {
+          primarySource = "inventory";
         } else if (fnName.includes("knowledge")) {
           primarySource = "system";
         }
@@ -378,8 +383,16 @@ class CorpAIService {
       }
     }
 
+    // If loop finished without producing final text answer, use deterministic local engine
     if (!finalAnswer) {
-      finalAnswer = "I have retrieved the necessary PaintCorp data. Please let me know if you would like additional details.";
+      return await this.executeLocalDeterministicPipeline(message, conversationHistory);
+    }
+
+    if (primarySource === "general") {
+      const qLower = message.toLowerCase();
+      if (qLower.includes("paintcorp") || qLower.includes("system") || qLower.includes("erp") || qLower.includes("module")) {
+        primarySource = "system";
+      }
     }
 
     return {

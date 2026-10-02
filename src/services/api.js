@@ -1,5 +1,5 @@
-const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const API_URL = rawApiUrl.replace(/\/+$/, "");
+const rawApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "" : "http://localhost:5000");
+const API_URL = rawApiUrl ? rawApiUrl.replace(/\/+$/, "") : "";
 
 /**
  * Helper to get authorization headers with JWT.
@@ -23,7 +23,7 @@ async function handleResponse(response) {
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    const errorMsg = (data && data.error) || (data && data.message) || response.statusText;
+    const errorMsg = (data && data.error) || (data && data.message) || response.statusText || `Request failed with status ${response.status}`;
     throw new Error(errorMsg);
   }
 

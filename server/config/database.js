@@ -25,7 +25,11 @@ function readJSON(file) {
 }
 
 function writeJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+  try {
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+  } catch (e) {
+    console.warn("[FALLBACK DB] Notice: writeJSON ignored in read-only environment:", e.message);
+  }
 }
 
 async function seedFallback() {

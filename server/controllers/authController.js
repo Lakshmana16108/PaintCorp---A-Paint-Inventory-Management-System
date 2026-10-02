@@ -5,6 +5,8 @@ const { generateOTP, hashOTP } = require("../utils/otp");
 const { sendOTPEmail } = require("../services/emailService");
 require("dotenv").config();
 
+const JWT_SECRET = process.env.JWT_SECRET || "paintcorp_secure_jwt_secret_key_2026_production";
+
 /**
  * Register/Signup a new user.
  */
@@ -74,7 +76,7 @@ async function login(req, res) {
       role: user.role
     };
 
-    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "24h" });
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "24h" });
 
     // Respond with user details (excluding password)
     return res.json({
@@ -217,7 +219,7 @@ async function verifyResetOTP(req, res) {
     // Generate a short-lived reset token (valid for 10 minutes)
     const resetToken = jwt.sign(
       { email: user.email, purpose: "password_reset" },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: "10m" }
     );
 
@@ -249,7 +251,7 @@ async function resetPassword(req, res) {
     // Verify the short-lived reset token
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, JWT_SECRET);
     } catch (err) {
       return res.status(400).json({ error: "Invalid or expired reset token. Please restart the process." });
     }

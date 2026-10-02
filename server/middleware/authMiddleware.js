@@ -13,7 +13,7 @@ function authMiddleware(req, res, next) {
   }
 
   try {
-    const secret = process.env.JWT_SECRET || "your_jwt_secret_key_here";
+    const secret = process.env.JWT_SECRET || "paintcorp_secure_jwt_secret_key_2026_production";
     const decoded = jwt.verify(token, secret);
     req.user = decoded; // Attach user payload to request
     next();

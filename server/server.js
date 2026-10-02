@@ -45,12 +45,26 @@ app.use(
 app.use(express.json({ limit: "50mb" })); // Increased limit to support base64 avatars
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Rate Limiter
+// Trust proxy for reverse proxies and serverless environments (Vercel, Render)
+app.set("trust proxy", 1);
+
+// Rate Limiter safe for serverless and proxy environments
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  max: 200, // Limit each IP to 200 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { default: false, xForwardedForHeader: false },
+  keyGenerator: (req) => {
+    return (
+      (req.headers && req.headers["x-forwarded-for"] && req.headers["x-forwarded-for"].split(",")[0].trim()) ||
+      (req.headers && req.headers["x-real-ip"]) ||
+      (req.socket && req.socket.remoteAddress) ||
+      (req.connection && req.connection.remoteAddress) ||
+      "127.0.0.1"
+    );
+  },
+  skip: (req) => Boolean(process.env.VERCEL),
   message: { error: "Too many requests from this IP, please try again after 15 minutes." }
 });
 
@@ -62,15 +76,23 @@ app.get("/", (req, res) => {
   res.json({ message: "PaintCorp ERP API is running." });
 });
 
-// Register routes
+// Register routes (both /api/* and /* for serverless compatibility)
 app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
 app.use("/api/paints", productRoutes);
+app.use("/paints", productRoutes);
 app.use("/api/stock", stockRoutes);
+app.use("/stock", stockRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/orders", orderRoutes);
 app.use("/api/sales-report", salesRoutes);
+app.use("/sales-report", salesRoutes);
 app.use("/api/sales", salesRoutes);
+app.use("/sales", salesRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/ai", aiRoutes);
 app.use("/api/corp-ai", aiRoutes);
+app.use("/corp-ai", aiRoutes);
 
 // Database initialization and server startup
 async function startServer() {

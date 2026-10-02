@@ -3,6 +3,7 @@ import { ACTIONS } from "../reducers/inventoryReducer";
 import { useToast } from "../context/ToastContext";
 import Pagination from "../components/Pagination";
 import { api } from "../services/api";
+import { refreshInventoryData } from "../utils/syncInventory";
 
 export default function AvailableStock({ state, dispatch }) {
   const { stock = [] } = state || {};
@@ -111,26 +112,18 @@ export default function AvailableStock({ state, dispatch }) {
     if (editTarget?.id) {
       try {
         await api.put(`/api/stock/${editTarget.id}`, { quantity: qty, minQuantity: minQty });
+        await refreshInventoryData(dispatch);
+        showToast(
+          `Stock levels updated for "${editTarget.paintName}" at ${editTarget.warehouse}.`,
+          "success"
+        );
+        setIsModalOpen(false);
       } catch (err) {
-        console.warn("API update stock failed, updating local state:", err);
+        console.error("API update stock failed:", err);
+        setFormError(err.message || "Failed to update warehouse stock.");
+        showToast(err.message || "Failed to update stock.", "danger");
       }
     }
-
-    dispatch({
-      type: ACTIONS.UPDATE_STOCK,
-      payload: {
-        paintId: editTarget.paintId,
-        warehouse: editTarget.warehouse,
-        quantity: qty,
-        minQuantity: minQty
-      }
-    });
-
-    showToast(
-      `Stock levels updated for "${editTarget.paintName}" at ${editTarget.warehouse}.`,
-      "success"
-    );
-    setIsModalOpen(false);
   };
 
   return (

@@ -3,6 +3,7 @@ import { ACTIONS } from "../reducers/inventoryReducer";
 import { useToast } from "../context/ToastContext";
 import { formatCurrency } from "../utils/currencyFormatter";
 import { api } from "../services/api";
+import { refreshInventoryData } from "../utils/syncInventory";
 
 const DRAFT_STORAGE_KEY = "el2_billing_draft";
 
@@ -354,19 +355,22 @@ export default function Billing({ state, dispatch }) {
       if (res && res.id) {
         orderPayload.id = res.id;
       }
+
+      // Authoritatively reload stock, paints, and orders from MySQL
+      await refreshInventoryData(dispatch);
+
+      showToast(`Invoice ${invoiceNumber} generated for GSTIN ${effectiveGst}.`, "success");
+
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      setLastSaved(null);
+
+      setTimeout(() => {
+        handlePrintInvoice();
+      }, 500);
     } catch (err) {
-      console.warn("API post order error, updating local state:", err);
+      console.error("API post order error:", err);
+      showToast(err.message || "Failed to create order due to server error.", "danger");
     }
-    dispatch({ type: ACTIONS.ADD_ORDER, payload: orderPayload });
-
-    showToast(`Invoice ${invoiceNumber} generated for GSTIN ${effectiveGst}.`, "success");
-
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
-    setLastSaved(null);
-
-    setTimeout(() => {
-      handlePrintInvoice();
-    }, 500);
   };
 
   // Print Invoice using useRef & standard print command

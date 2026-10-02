@@ -6,6 +6,8 @@ const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const stockRoutes = require("./routes/stockRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const salesRoutes = require("./routes/salesRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 require("dotenv").config();
 
 const app = express();
@@ -65,6 +67,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/paints", productRoutes);
 app.use("/api/stock", stockRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/sales-report", salesRoutes);
+app.use("/api/sales", salesRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/corp-ai", aiRoutes);
 
 // Database initialization and server startup
 async function startServer() {
@@ -86,4 +92,8 @@ async function startServer() {
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, startServer };

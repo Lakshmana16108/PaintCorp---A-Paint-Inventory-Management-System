@@ -56,7 +56,9 @@ export default function Layout({ lowStockAlerts }) {
           <Breadcrumbs />
 
           {/* Page contents */}
-          <div style={{ flexGrow: 1 }}><Outlet /></div>
+          <div style={{ flexGrow: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            <Outlet />
+          </div>
         </main>
       </div>
 

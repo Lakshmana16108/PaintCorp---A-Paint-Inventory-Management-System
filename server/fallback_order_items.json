@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "order_id": "ORD101",
+    "paint_id": "PNT001",
+    "paint_name": "WeatherShield Max",
+    "quantity": 10,
+    "price": 3679.2
+  },
+  {
+    "id": 2,
+    "order_id": "ORD102",
+    "paint_id": "PNT002",
+    "paint_name": "Royale Luxury Emulsion",
+    "quantity": 5,
+    "price": 3160
+  },
+  {
+    "id": 3,
+    "order_id": "ORD103",
+    "paint_id": "PNT004",
+    "paint_name": "Aquashield Waterproofing",
+    "quantity": 25,
+    "price": 4320
+  },
+  {
+    "id": 4,
+    "order_id": "ORD104",
+    "paint_id": "PNT003",
+    "paint_name": "Super Premium Enamel",
+    "quantity": 2,
+    "price": 2399.2
+  }
+]

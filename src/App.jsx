@@ -24,6 +24,8 @@ import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import OrderDetails from "./pages/OrderDetails";
+import SalesDashboard from "./pages/SalesDashboard";
+import CorpAI from "./pages/CorpAI";
 
 export default function App() {
   // Loading spinner state
@@ -39,6 +41,12 @@ export default function App() {
   // Fetch live inventory data from backend MySQL database on mount
   useEffect(() => {
     let isMounted = true;
+
+    // Purge any stale legacy localStorage inventory keys to ensure MySQL is authoritative
+    localStorage.removeItem("paint_paints");
+    localStorage.removeItem("paint_stock");
+    localStorage.removeItem("paint_orders");
+
     async function loadLiveData() {
       setLoading(true);
       try {
@@ -116,6 +124,9 @@ export default function App() {
             <Route path="/billing" element={<Billing state={state} dispatch={dispatch} />} />
             <Route path="/orders" element={<Orders state={state} dispatch={dispatch} />} />
             <Route path="/orders/:orderId" element={<OrderDetails state={state} />} />
+            <Route path="/sales-analysis" element={<SalesDashboard />} />
+            <Route path="/corp-ai" element={<CorpAI />} />
+            <Route path="/ai" element={<CorpAI />} />
           </Route>
         </Route>
 

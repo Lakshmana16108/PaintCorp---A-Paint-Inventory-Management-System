@@ -240,7 +240,22 @@ const mockPool = {
     // 10. SELECT * FROM products
     if (sqlNorm.includes("FROM products") && !sqlNorm.includes("INSERT") && !sqlNorm.includes("UPDATE") && !sqlNorm.includes("DELETE")) {
       const file = path.join(__dirname, "..", "fallback_products.json");
-      const list = readJSON(file);
+      let list = readJSON(file);
+      if (sqlNorm.includes("WHERE name = ?") && params && params[0]) {
+        list = list.filter(p => p.name && p.name.toLowerCase() === params[0].toLowerCase());
+      } else if (sqlNorm.includes("WHERE id = ?") && params && params[0]) {
+        list = list.filter(p => p.id === params[0]);
+      } else if (sqlNorm.includes("LIKE") && params && params[0]) {
+        const term = String(params[0]).replace(/%/g, "").toLowerCase();
+        list = list.filter(p => 
+          (p.name && p.name.toLowerCase().includes(term)) ||
+          (p.brand && p.brand.toLowerCase().includes(term)) ||
+          (p.category && p.category.toLowerCase().includes(term))
+        );
+      }
+      if (sqlNorm.includes("LIMIT 1")) {
+        list = list.slice(0, 1);
+      }
       if (sqlNorm.includes("COUNT(*)")) {
         return [[{ count: list.length, cnt: list.length }]];
       }
@@ -380,6 +395,15 @@ const mockPool = {
     }
 
     return [[]];
+  },
+  async getConnection() {
+    return {
+      query: mockPool.query.bind(mockPool),
+      beginTransaction: async () => {},
+      commit: async () => {},
+      rollback: async () => {},
+      release: () => {}
+    };
   }
 };
 
@@ -536,6 +560,22 @@ async function initializeDatabase() {
     try {
       await pool.query("ALTER TABLE orders MODIFY COLUMN price DECIMAL(10,2) DEFAULT 0.00");
     } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE orders MODIFY COLUMN order_date DATE");
+    } catch (e) {}
+
+    // Safe migration: ensure products in products catalog have matching warehouse_stock entries
+    try {
+      await pool.query(`
+        INSERT INTO warehouse_stock (paint_id, paint_name, brand, warehouse, quantity, min_quantity, status)
+        SELECT p.id, p.name, p.brand, 'Central Warehouse - Tirunelveli', p.quantity, 15, p.status
+        FROM products p
+        LEFT JOIN warehouse_stock w ON p.id = w.paint_id
+        WHERE w.id IS NULL
+      `);
+    } catch (wsErr) {
+      console.warn("Notice: warehouse_stock sync check:", wsErr.message);
+    }
 
     // Safe migration: populate order_items for existing orders that do not have order_items yet
     try {

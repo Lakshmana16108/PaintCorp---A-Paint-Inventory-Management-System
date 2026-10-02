@@ -66,5 +66,10 @@ export const api = {
       headers: getHeaders()
     });
     return handleResponse(response);
+  },
+
+  async sendCorpAIMessage(message, conversationHistory = []) {
+    return this.post("/api/ai/chat", { message, conversationHistory });
   }
 };
+

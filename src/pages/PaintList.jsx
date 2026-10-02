@@ -5,6 +5,7 @@ import Pagination from "../components/Pagination";
 import ConfirmationDialog from "../components/ConfirmationDialog";
 import { formatCurrency } from "../utils/currencyFormatter";
 import { api } from "../services/api";
+import { refreshInventoryData } from "../utils/syncInventory";
 
 export default function PaintList({ state, dispatch }) {
   const { paints = [] } = state || {};
@@ -103,16 +104,16 @@ export default function PaintList({ state, dispatch }) {
     return filteredPaints.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredPaints, currentPage]);
 
-  // Memoized Delete handler using useCallback
   const handleDeleteConfirm = useCallback(async () => {
     if (deleteId) {
       try {
         await api.delete(`/api/paints/${deleteId}`);
+        await refreshInventoryData(dispatch);
+        showToast(`Paint SKU ${deleteId} deleted successfully.`, "success");
       } catch (err) {
-        console.warn("API delete failed, performing local delete", err);
+        console.error("API delete failed:", err);
+        showToast(err.message || "Failed to delete paint product.", "danger");
       }
-      dispatch({ type: ACTIONS.DELETE_PAINT, payload: deleteId });
-      showToast(`Paint SKU ${deleteId} deleted successfully.`, "success");
       setDeleteId(null);
       setIsConfirmOpen(false);
 
@@ -210,23 +211,17 @@ export default function PaintList({ state, dispatch }) {
     try {
       if (modalMode === "add") {
         await api.post("/api/paints", paintPayload);
-        dispatch({ type: ACTIONS.ADD_PAINT, payload: paintPayload });
         showToast(`New paint formulation "${paintPayload.name}" added to warehouse records.`, "success");
       } else {
         await api.put(`/api/paints/${paintPayload.id}`, paintPayload);
-        dispatch({ type: ACTIONS.UPDATE_PAINT, payload: paintPayload });
         showToast(`Updated SKU ${paintPayload.id} records successfully.`, "success");
       }
+      await refreshInventoryData(dispatch);
+      setIsModalOpen(false);
     } catch (err) {
-      console.warn("API operation error, applying local state update:", err);
-      if (modalMode === "add") {
-        dispatch({ type: ACTIONS.ADD_PAINT, payload: paintPayload });
-      } else {
-        dispatch({ type: ACTIONS.UPDATE_PAINT, payload: paintPayload });
-      }
+      console.error("API operation error:", err);
+      showToast(err.message || "Failed to save paint product.", "danger");
     }
-
-    setIsModalOpen(false);
   };
 
   return (

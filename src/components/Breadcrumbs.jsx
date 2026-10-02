@@ -7,6 +7,9 @@ const pathNames = {
   "available-stock": "Available Stock",
   "billing": "Billing",
   "orders": "Orders",
+  "sales-analysis": "Sales Analysis",
+  "corp-ai": "Corp AI",
+  "ai": "Corp AI",
   "profile": "Profile",
   "settings": "Settings"
 };

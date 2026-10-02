@@ -5,6 +5,7 @@ import { useToast } from "../context/ToastContext";
 import Pagination from "../components/Pagination";
 import { formatCurrency } from "../utils/currencyFormatter";
 import { api } from "../services/api";
+import { refreshInventoryData } from "../utils/syncInventory";
 
 export default function Orders({ state, dispatch }) {
   const { orders = [] } = state || {};
@@ -67,22 +68,16 @@ export default function Orders({ state, dispatch }) {
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       await api.put(`/api/orders/${orderId}/status`, { status: newStatus });
-    } catch (err) {
-      console.warn("API status update error, applying local update:", err);
-    }
+      await refreshInventoryData(dispatch);
 
-    dispatch({
-      type: ACTIONS.UPDATE_ORDER_STATUS,
-      payload: {
-        orderId,
-        newStatus
+      if (newStatus === "Cancelled") {
+        showToast(`Order ${orderId} cancelled. Stock quantities restored.`, "warning");
+      } else {
+        showToast(`Order ${orderId} updated to ${newStatus}.`, "success");
       }
-    });
-
-    if (newStatus === "Cancelled") {
-      showToast(`Order ${orderId} cancelled. Stock quantities restored.`, "warning");
-    } else {
-      showToast(`Order ${orderId} updated to ${newStatus}.`, "success");
+    } catch (err) {
+      console.error("API status update error:", err);
+      showToast(err.message || "Failed to update order status.", "danger");
     }
   };
 

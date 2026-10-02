@@ -20,28 +20,71 @@ require("dotenv").config();
 let pool;
 let useFallback = false;
 
-const FALLBACK_USERS_FILE = path.join(__dirname, "..", "fallback_users.json");
-const FALLBACK_OTPS_FILE = path.join(__dirname, "..", "fallback_otps.json");
-const FALLBACK_PRODUCTS_FILE = path.join(__dirname, "..", "fallback_products.json");
-const FALLBACK_STOCK_FILE = path.join(__dirname, "..", "fallback_stock.json");
-const FALLBACK_ORDERS_FILE = path.join(__dirname, "..", "fallback_orders.json");
-const FALLBACK_ORDER_ITEMS_FILE = path.join(__dirname, "..", "fallback_order_items.json");
+const os = require("os");
+const memoryStore = {};
 
-// Helper functions for fallback JSON database
-function readJSON(file) {
-  if (!fs.existsSync(file)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(file, "utf8"));
-  } catch (e) {
-    return [];
+function getStoragePath(basename) {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join(os.tmpdir(), basename);
   }
+  return path.join(__dirname, "..", basename);
+}
+
+const FALLBACK_USERS_FILE = getStoragePath("fallback_users.json");
+const FALLBACK_OTPS_FILE = getStoragePath("fallback_otps.json");
+const FALLBACK_PRODUCTS_FILE = getStoragePath("fallback_products.json");
+const FALLBACK_STOCK_FILE = getStoragePath("fallback_stock.json");
+const FALLBACK_ORDERS_FILE = getStoragePath("fallback_orders.json");
+const FALLBACK_ORDER_ITEMS_FILE = getStoragePath("fallback_order_items.json");
+
+// Helper functions for fallback JSON database with memory cache + /tmp persistence
+function readJSON(file) {
+  const basename = path.basename(file);
+  if (memoryStore[basename] && Array.isArray(memoryStore[basename])) {
+    return memoryStore[basename];
+  }
+
+  const writablePath = getStoragePath(basename);
+  if (fs.existsSync(writablePath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(writablePath, "utf8"));
+      if (Array.isArray(data) && data.length > 0) {
+        memoryStore[basename] = data;
+        return data;
+      }
+    } catch (e) {}
+  }
+
+  const bundledFile = path.join(__dirname, "..", basename);
+  if (fs.existsSync(bundledFile)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(bundledFile, "utf8"));
+      memoryStore[basename] = data;
+      try {
+        fs.writeFileSync(writablePath, JSON.stringify(data, null, 2), "utf8");
+      } catch (we) {}
+      return data;
+    } catch (e) {}
+  }
+
+  memoryStore[basename] = [];
+  return [];
 }
 
 function writeJSON(file, data) {
+  const basename = path.basename(file);
+  memoryStore[basename] = data;
+
+  const writablePath = getStoragePath(basename);
   try {
-    fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+    fs.writeFileSync(writablePath, JSON.stringify(data, null, 2), "utf8");
   } catch (e) {
-    console.warn("[FALLBACK DB] Notice: writeJSON ignored in read-only environment:", e.message);
+    try {
+      const tmpPath = path.join(os.tmpdir(), basename);
+      fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf8");
+    } catch (tmpErr) {
+      console.warn("[FALLBACK DB] Notice: Write persisted in memory store:", tmpErr.message);
+    }
   }
 }
 
@@ -618,7 +661,12 @@ const mockPool = {
         const id = params[0];
         return [list.filter(o => o.id === id)];
       }
-      return [list];
+      const sorted = [...list].sort((a, b) => {
+        const dateA = String(a.order_date || a.created_at || "");
+        const dateB = String(b.order_date || b.created_at || "");
+        return dateB.localeCompare(dateA);
+      });
+      return [sorted];
     }
 
     // 17. INSERT INTO orders
@@ -636,9 +684,11 @@ const mockPool = {
         price: Number(params[7]),
         order_date: params[8],
         status: params[9],
-        total_amount: params[10] !== undefined ? Number(params[10]) : Number(params[7])
+        total_amount: params[10] !== undefined ? Number(params[10]) : Number(params[7]),
+        created_at: new Date().toISOString()
       };
-      list.push(newOrder);
+      // Place newest order at the very beginning
+      list.unshift(newOrder);
       writeJSON(file, list);
       return [{ affectedRows: 1 }];
     }

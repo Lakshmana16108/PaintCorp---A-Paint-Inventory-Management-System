@@ -352,11 +352,15 @@ export default function Billing({ state, dispatch }) {
 
     try {
       const res = await api.post("/api/orders", orderPayload);
-      if (res && res.id) {
-        orderPayload.id = res.id;
-      }
+      const createdOrder = res && res.id ? { ...orderPayload, ...res } : orderPayload;
 
-      // Authoritatively reload stock, paints, and orders from MySQL
+      // 1. Immediately reflect the new order and stock reduction in central React state
+      dispatch({
+        type: ACTIONS.ADD_ORDER,
+        payload: createdOrder
+      });
+
+      // 2. Authoritatively reload stock, paints, and orders from backend
       await refreshInventoryData(dispatch);
 
       showToast(`Invoice ${invoiceNumber} generated for GSTIN ${effectiveGst}.`, "success");

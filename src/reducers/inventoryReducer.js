@@ -142,9 +142,47 @@ export const inventoryReducer = (state, action) => {
       const exists = state.orders.some((o) => o.id === newOrder.id);
       const updatedOrders = exists ? state.orders : [newOrder, ...state.orders];
 
+      // Deduct purchased paint quantities from client state
+      const orderItems = Array.isArray(newOrder.items) && newOrder.items.length > 0
+        ? newOrder.items
+        : [{ paintId: newOrder.paintId, quantity: newOrder.quantity || 1 }];
+
+      const deductMap = {};
+      orderItems.forEach((it) => {
+        if (it.paintId) {
+          deductMap[it.paintId] = (deductMap[it.paintId] || 0) + (Number(it.quantity) || 1);
+        }
+      });
+
+      const updatedPaints = (state.paints || []).map((p) => {
+        if (deductMap[p.id]) {
+          const newQty = Math.max(0, p.quantity - deductMap[p.id]);
+          return {
+            ...p,
+            quantity: newQty,
+            status: getPaintStatus(newQty)
+          };
+        }
+        return p;
+      });
+
+      const updatedStock = (state.stock || []).map((s) => {
+        if (deductMap[s.paintId]) {
+          const newQty = Math.max(0, s.quantity - deductMap[s.paintId]);
+          return {
+            ...s,
+            quantity: newQty,
+            status: getStockStatus(newQty, s.minQuantity || 15)
+          };
+        }
+        return s;
+      });
+
       return {
         ...state,
-        orders: updatedOrders
+        orders: updatedOrders,
+        paints: updatedPaints,
+        stock: updatedStock
       };
     }
 

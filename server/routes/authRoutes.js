@@ -8,6 +8,7 @@ router.post("/signup", authController.signup);
 router.post("/login", authController.login);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/verify-reset-otp", authController.verifyResetOTP);
+router.post("/verify-otp", authController.verifyResetOTP);
 router.post("/reset-password", authController.resetPassword);
 
 // Protected routes (require JWT verification)

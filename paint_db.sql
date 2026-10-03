@@ -99,7 +99,8 @@ INSERT INTO users (id, name, email, password, role, mobile, username, avatar, tw
 (3, 'Priya Raj', 'priya.raj@paintcorp.com', '$2a$10$1S2yAggPWbEjCcKtOoBhjuc.bSWSHM./DXvdVLke45l2p/AlBxWnK', 'Staff', '9791543287', 'priya_staff', '', 0),
 (4, 'Suresh Balan', 'suresh.balan@paintcorp.com', '$2a$10$1S2yAggPWbEjCcKtOoBhjuc.bSWSHM./DXvdVLke45l2p/AlBxWnK', 'Warehouse Manager', '9894567123', 'suresh_warehouse', '', 0),
 (5, 'Divya Krishnan', 'divya.krishnan@paintcorp.com', '$2a$10$1S2yAggPWbEjCcKtOoBhjuc.bSWSHM./DXvdVLke45l2p/AlBxWnK', 'Sales', '9361024587', 'divya_sales', '', 0),
-(6, 'M.Lakshmana Perumal', 'perumalmlakshmana5@gmail.com', '$2a$10$zqNMTECGHMwcwWWvpQcCw.D9IIj8yxRzzWQr86O3rzj/FRyzMz5YS', 'Staff', '+919486721134', 'perumalmlakshmana5_753', '', 0);
+(6, 'M.Lakshmana Perumal', 'perumalmlakshmana5@gmail.com', '$2a$10$zqNMTECGHMwcwWWvpQcCw.D9IIj8yxRzzWQr86O3rzj/FRyzMz5YS', 'Staff', '+919486721134', 'perumalmlakshmana5_753', '', 0),
+(7, 'Lakshmana Perumal', 'plakshmana22@gmail.com', '$2a$10$zqNMTECGHMwcwWWvpQcCw.D9IIj8yxRzzWQr86O3rzj/FRyzMz5YS', 'Administrator', '+919486721134', 'plakshmana22_admin', '', 0);
 
 -- Seed Products (20 products)
 INSERT INTO products (id, name, brand, category, color, finish, price, quantity, status) VALUES

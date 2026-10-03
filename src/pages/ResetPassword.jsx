@@ -7,7 +7,7 @@ export default function ResetPassword() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const resetToken = location.state?.resetToken || "";
+  const resetToken = location.state?.resetToken || sessionStorage.getItem("reset_token") || "";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -60,6 +60,8 @@ export default function ResetPassword() {
       });
 
       if (result.success) {
+        sessionStorage.removeItem("reset_token");
+        sessionStorage.removeItem("reset_email");
         setIsSuccess(true);
         showToast("Your password has been reset successfully.", "success");
       } else {

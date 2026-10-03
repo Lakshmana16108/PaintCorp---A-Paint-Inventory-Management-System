@@ -1,51 +1,96 @@
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
+
+// Ensure environment variables are loaded from all potential locations
+const envPaths = [
+  path.join(__dirname, "..", ".env"),
+  path.join(__dirname, "..", "..", ".env"),
+  path.join(process.cwd(), "server", ".env"),
+  path.join(process.cwd(), ".env")
+];
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    require("dotenv").config({ path: envPath });
+  }
+}
 require("dotenv").config();
 
-// Create transporter configuration for Gmail SMTP
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // true for port 465, false for other ports
-  auth: {
-    user: process.env.EMAIL_USER || "placeholder@gmail.com",
-    pass: process.env.EMAIL_APP_PASSWORD || "placeholder"
+function getStoragePath(basename) {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join(os.tmpdir(), basename);
   }
-});
+  return path.join(__dirname, "..", basename);
+}
+
+/**
+ * Creates dynamic transporter using latest environment settings.
+ */
+function createTransporter() {
+  const user = (process.env.EMAIL_USER || "").trim();
+  const rawPass = (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || "").trim();
+  const pass = rawPass.replace(/\s+/g, ""); // Strip any spaces from Google App Passwords
+
+  if (!user || !pass || user.includes("placeholder") || user.includes("your_gmail_address")) {
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+}
 
 /**
  * Send Password Reset OTP Email
  * @param {string} toEmail 
  * @param {string} otp 
- * @returns {Promise<void>}
+ * @returns {Promise<{ success: boolean, delivered: boolean, error?: string }>}
  */
 async function sendOTPEmail(toEmail, otp) {
-  // Always log OTP in server console for quick dev testing
+  // Always log OTP in server console for development & debugging
   console.log(`\n==============================================`);
   console.log(`🔑 [OTP VERIFICATION CODE] Email: ${toEmail} | CODE: ${otp}`);
   console.log(`==============================================\n`);
 
-  // Write simulated email file as a guaranteed fallback
-  const simulatedPath = path.join(__dirname, "..", "simulated_email.json");
-  fs.writeFileSync(simulatedPath, JSON.stringify({
-    to: toEmail,
-    subject: "Password Reset Verification",
-    otp: otp,
-    textBody: `PaintCorp ERP\n\nYour verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
-    timestamp: new Date().toISOString()
-  }, null, 2));
-
-  // If SMTP is not configured, return early
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
-    console.warn(`[MAIL WARNING] Gmail SMTP is not configured. Code saved to server/simulated_email.json`);
-    return;
+  // Write simulated email file as a server-side record
+  try {
+    const simulatedPath = getStoragePath("simulated_email.json");
+    fs.writeFileSync(simulatedPath, JSON.stringify({
+      to: toEmail,
+      subject: "Password Reset Verification",
+      otp: otp,
+      textBody: `PaintCorp ERP\n\nYour verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
+      timestamp: new Date().toISOString()
+    }, null, 2));
+  } catch (err) {
+    console.warn(`[MAIL NOTICE] Could not write simulated_email.json: ${err.message}`);
   }
 
+  const transporter = createTransporter();
+
+  // If SMTP credentials are not configured, log and return error
+  if (!transporter) {
+    console.warn(`[MAIL WARNING] Gmail SMTP is not configured. EMAIL_USER and EMAIL_APP_PASSWORD must be configured in environment variables.`);
+    return {
+      success: false,
+      delivered: false,
+      error: "Email delivery service is not configured. Please set EMAIL_USER and EMAIL_APP_PASSWORD in environment variables."
+    };
+  }
+
+  const senderUser = process.env.EMAIL_USER;
   const mailOptions = {
-    from: `"PaintCorp ERP" <${process.env.EMAIL_USER}>`,
+    from: `"PaintCorp ERP" <${senderUser}>`,
     to: toEmail,
-    subject: "Password Reset Verification",
+    subject: "PaintCorp ERP - Password Reset Verification Code",
     text: `PaintCorp ERP\n\nPassword Reset Verification\n\nYour verification code is: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you did not request this password reset, please ignore this email.`,
     html: `
       <div style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; padding: 40px 20px;">
@@ -80,9 +125,18 @@ async function sendOTPEmail(toEmail, otp) {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`[MAIL SUCCESS] Verification OTP sent via Gmail SMTP to ${toEmail}`);
+    console.log(`[MAIL SUCCESS] Verification OTP successfully sent via Gmail SMTP to ${toEmail}`);
+    return {
+      success: true,
+      delivered: true
+    };
   } catch (err) {
-    console.warn(`[MAIL SMTP NOTICE] Could not send via Gmail SMTP (${err.message}). Using simulated email fallback.`);
+    console.error(`[MAIL SMTP ERROR] Could not send via Gmail SMTP: ${err.message}`);
+    return {
+      success: false,
+      delivered: false,
+      error: `Could not send verification email: ${err.message}`
+    };
   }
 }
 

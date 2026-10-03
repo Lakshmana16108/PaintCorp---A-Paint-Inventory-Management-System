@@ -40,8 +40,10 @@ export default function ForgotPassword() {
       const result = await api.post("/api/auth/forgot-password", { email });
       if (result.success) {
         showToast(result.message || "Verification code sent to your email.", "success");
+        const cleanEmail = email.trim().toLowerCase();
+        sessionStorage.setItem("reset_email", cleanEmail);
         // Navigate to verification page and pass email in state
-        navigate("/verify-otp", { state: { email } });
+        navigate("/verify-otp", { state: { email: cleanEmail } });
       } else {
         showToast(result.error || "Something went wrong.", "danger");
         setErrors({ form: result.error });

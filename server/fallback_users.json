@@ -64,5 +64,16 @@
     "username": "perumalmlakshmana5_753",
     "avatar": "",
     "two_factor_enabled": 0
+  },
+  {
+    "id": 7,
+    "name": "Lakshmana Perumal",
+    "email": "plakshmana22@gmail.com",
+    "password": "$2a$10$zqNMTECGHMwcwWWvpQcCw.D9IIj8yxRzzWQr86O3rzj/FRyzMz5YS",
+    "role": "Administrator",
+    "mobile": "+919486721134",
+    "username": "plakshmana22_admin",
+    "avatar": "",
+    "two_factor_enabled": 0
   }
 ]

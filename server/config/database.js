@@ -220,7 +220,7 @@ const mockPool = {
       const userId = params[0];
       const otps = readJSON(FALLBACK_OTPS_FILE);
       otps.forEach(o => {
-        if (o.user_id === userId) o.used = 1;
+        if (String(o.user_id) === String(userId)) o.used = 1;
       });
       writeJSON(FALLBACK_OTPS_FILE, otps);
       return [{ affectedRows: 1 }];
@@ -247,7 +247,7 @@ const mockPool = {
     if (sqlNorm.includes("SELECT * FROM password_reset_otps WHERE user_id = ?")) {
       const userId = params[0];
       const otps = readJSON(FALLBACK_OTPS_FILE);
-      const found = otps.filter(o => o.user_id === userId && o.used === 0 && new Date(o.expires_at) > new Date());
+      const found = otps.filter(o => String(o.user_id) === String(userId) && Number(o.used) === 0 && new Date(o.expires_at) > new Date());
       // Sort by created_at desc
       found.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       return [found];
@@ -257,7 +257,7 @@ const mockPool = {
     if (sqlNorm.includes("UPDATE password_reset_otps SET attempts = attempts + 1 WHERE id = ?")) {
       const id = params[0];
       const otps = readJSON(FALLBACK_OTPS_FILE);
-      const otp = otps.find(o => o.id === id);
+      const otp = otps.find(o => String(o.id) === String(id));
       if (otp) otp.attempts += 1;
       writeJSON(FALLBACK_OTPS_FILE, otps);
       return [{ affectedRows: 1 }];
@@ -267,7 +267,7 @@ const mockPool = {
     if (sqlNorm.includes("UPDATE password_reset_otps SET used = 1 WHERE id = ?")) {
       const id = params[0];
       const otps = readJSON(FALLBACK_OTPS_FILE);
-      const otp = otps.find(o => o.id === id);
+      const otp = otps.find(o => String(o.id) === String(id));
       if (otp) otp.used = 1;
       writeJSON(FALLBACK_OTPS_FILE, otps);
       return [{ affectedRows: 1 }];

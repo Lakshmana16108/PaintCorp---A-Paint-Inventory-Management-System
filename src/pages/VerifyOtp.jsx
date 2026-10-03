@@ -7,7 +7,7 @@ export default function VerifyOtp() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const email = location.state?.email || "";
+  const email = location.state?.email || sessionStorage.getItem("reset_email") || "";
 
   const [otp, setOtp] = useState("");
   const [countdown, setCountdown] = useState(60);
@@ -15,7 +15,7 @@ export default function VerifyOtp() {
   const [loading, setLoading] = useState(false);
   const otpInputRef = useRef(null);
 
-  // Redirect to forgot-password if email is missing from state (e.g. page refresh)
+  // Redirect to forgot-password if email is missing from state & storage
   useEffect(() => {
     if (!email) {
       showToast("Please request a reset verification code first.", "warning");
@@ -59,6 +59,7 @@ export default function VerifyOtp() {
       const result = await api.post("/api/auth/verify-reset-otp", { email, otp });
       if (result.success && result.resetToken) {
         showToast("Code verified successfully.", "success");
+        sessionStorage.setItem("reset_token", result.resetToken);
         // Pass resetToken in state to Reset Password page
         navigate("/reset-password", { state: { resetToken: result.resetToken } });
       } else {
@@ -80,7 +81,7 @@ export default function VerifyOtp() {
     try {
       const result = await api.post("/api/auth/forgot-password", { email });
       if (result.success) {
-        showToast("A new verification code has been sent.", "success");
+        showToast("A new verification code has been sent to your email.", "success");
         setCountdown(60);
         setOtp("");
         setErrors({});

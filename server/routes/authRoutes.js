@@ -11,6 +11,10 @@ router.post("/verify-reset-otp", authController.verifyResetOTP);
 router.post("/verify-otp", authController.verifyResetOTP);
 router.post("/reset-password", authController.resetPassword);
 
+// Google OAuth routes
+router.get("/google", authController.googleAuth);
+router.get("/google/callback", authController.googleCallback);
+
 // Protected routes (require JWT verification)
 router.post("/change-password", authMiddleware, authController.changePassword);
 router.get("/me", authMiddleware, authController.getMe);

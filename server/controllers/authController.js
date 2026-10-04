@@ -1,4 +1,6 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const { OAuth2Client } = require("google-auth-library");
 const { getPool } = require("../config/database");
 const { hashPassword, comparePassword } = require("../utils/password");
 const { generateOTP, hashOTP } = require("../utils/otp");
@@ -6,6 +8,53 @@ const { sendOTPEmail } = require("../services/emailService");
 require("dotenv").config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "paintcorp_secure_jwt_secret_key_2026_production";
+
+/**
+ * Determine the destination frontend URL for OAuth redirects across environments.
+ */
+function getFrontendUrl(req) {
+  if (process.env.FRONTEND_URL) {
+    return process.env.FRONTEND_URL.replace(/\/+$/, "");
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (req) {
+    const host = req.headers["x-forwarded-host"] || req.headers.host;
+    const proto = req.headers["x-forwarded-proto"] || (req.secure ? "https" : "http");
+    if (host && !host.includes("localhost:5000") && !host.includes("127.0.0.1:5000")) {
+      return `${proto}://${host}`;
+    }
+  }
+  return "http://localhost:5173";
+}
+
+/**
+ * Initialize Google OAuth2 client with environment variables.
+ */
+function getOAuth2Client(req) {
+  const clientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
+  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
+
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  let callbackUrl = (process.env.GOOGLE_CALLBACK_URL || "").trim();
+  if (!callbackUrl) {
+    if (process.env.VERCEL_URL) {
+      callbackUrl = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
+    } else if (req) {
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const proto = req.headers["x-forwarded-proto"] || (req.secure ? "https" : "http");
+      callbackUrl = `${proto}://${host}/api/auth/google/callback`;
+    } else {
+      callbackUrl = "http://localhost:5000/api/auth/google/callback";
+    }
+  }
+
+  return new OAuth2Client(clientId, clientSecret, callbackUrl);
+}
 
 /**
  * Register/Signup a new user.
@@ -379,6 +428,143 @@ async function getMe(req, res) {
   }
 }
 
+/**
+ * Initiate Google OAuth 2.0 flow.
+ */
+async function googleAuth(req, res) {
+  const frontendUrl = getFrontendUrl(req);
+  const oauth2Client = getOAuth2Client(req);
+
+  if (!oauth2Client) {
+    const errorMsg = "Google OAuth is not configured on the server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.";
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorMsg)}`);
+  }
+
+  try {
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      scope: [
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/userinfo.email"
+      ],
+      prompt: "select_account"
+    });
+
+    return res.redirect(authUrl);
+  } catch (error) {
+    console.error("Google Auth initiation error:", error);
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("Failed to initiate Google authentication.")}`);
+  }
+}
+
+/**
+ * Handle Google OAuth 2.0 callback, find/create user, issue JWT, and redirect to frontend.
+ */
+async function googleCallback(req, res) {
+  const frontendUrl = getFrontendUrl(req);
+  const { code, error } = req.query;
+
+  if (error) {
+    console.warn("Google OAuth error response:", error);
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(`Google Sign-In was cancelled or failed: ${error}`)}`);
+  }
+
+  if (!code) {
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("No authorization code provided by Google.")}`);
+  }
+
+  const oauth2Client = getOAuth2Client(req);
+  if (!oauth2Client) {
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("Google OAuth is not configured on the server.")}`);
+  }
+
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    let email = null;
+    let name = null;
+    let picture = "";
+
+    if (tokens.id_token) {
+      const ticket = await oauth2Client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+      const payload = ticket.getPayload();
+      email = payload.email;
+      name = payload.name;
+      picture = payload.picture || "";
+    } else {
+      const userinfoRes = await oauth2Client.request({
+        url: "https://www.googleapis.com/oauth2/v3/userinfo"
+      });
+      email = userinfoRes.data?.email;
+      name = userinfoRes.data?.name;
+      picture = userinfoRes.data?.picture || "";
+    }
+
+    if (!email) {
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("Could not retrieve email address from your Google profile.")}`);
+    }
+
+    const pool = getPool();
+    const [existingUsers] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [email]);
+    let user;
+
+    if (existingUsers && existingUsers.length > 0) {
+      user = existingUsers[0];
+      // Update avatar if currently empty and picture is available
+      if ((!user.avatar || user.avatar === "") && picture) {
+        try {
+          await pool.query("UPDATE users SET avatar = ? WHERE id = ?", [picture, user.id]);
+          user.avatar = picture;
+        } catch (avatarErr) {
+          console.warn("Notice: unable to update user avatar:", avatarErr.message);
+        }
+      }
+    } else {
+      // User does not exist, create new user matching schema
+      const sanitizedPrefix = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
+      const username = `${sanitizedPrefix}_${Math.floor(1000 + Math.random() * 9000)}`;
+      const randomPassword = await hashPassword(crypto.randomBytes(32).toString("hex"));
+      const displayName = name || email.split("@")[0];
+
+      await pool.query(
+        `INSERT INTO users (name, email, password, role, mobile, username, avatar, two_factor_enabled) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [displayName, email, randomPassword, "Staff", "N/A", username, picture, 0]
+      );
+
+      const [createdUsers] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [email]);
+      user = (createdUsers && createdUsers[0]) || {
+        id: null,
+        name: displayName,
+        email,
+        role: "Staff",
+        mobile: "N/A",
+        username,
+        avatar: picture,
+        two_factor_enabled: 0
+      };
+    }
+
+    // Generate JWT matching normal login
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "24h" });
+
+    return res.redirect(`${frontendUrl}/login?token=${encodeURIComponent(token)}&auth_success=1`);
+  } catch (err) {
+    console.error("Google callback error:", err);
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("Google authentication failed. Please try again.")}`);
+  }
+}
+
 module.exports = {
   signup,
   login,
@@ -386,5 +572,7 @@ module.exports = {
   verifyResetOTP,
   resetPassword,
   changePassword,
-  getMe
+  getMe,
+  googleAuth,
+  googleCallback
 };

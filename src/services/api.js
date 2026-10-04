@@ -4,7 +4,7 @@
  *   If a custom remote VITE_API_URL is explicitly set and valid (not pointing to localhost or obsolete URLs), it will be used.
  * - In development: defaults to "http://localhost:5000" unless overridden by VITE_API_URL.
  */
-function resolveApiUrl() {
+export function resolveApiUrl() {
   const envUrl = (import.meta.env.VITE_API_URL || "").trim();
   if (import.meta.env.PROD) {
     if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1") && !envUrl.includes("onrender.com")) {
@@ -15,7 +15,11 @@ function resolveApiUrl() {
   return envUrl ? envUrl.replace(/\/+$/, "") : "http://localhost:5000";
 }
 
-const API_URL = resolveApiUrl();
+export const API_URL = resolveApiUrl();
+
+export function getGoogleAuthUrl() {
+  return `${API_URL}/api/auth/google`;
+}
 
 
 /**

@@ -56,6 +56,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const completeGoogleAuth = async (token) => {
+    try {
+      if (!token) return { success: false, message: "No authentication token provided." };
+      sessionStorage.setItem("auth_token", token);
+      const result = await api.get("/api/auth/me");
+      if (result.success && result.user) {
+        sessionStorage.setItem("current_user", JSON.stringify(result.user));
+        setCurrentUser(result.user);
+        return { success: true, user: result.user };
+      }
+      logout();
+      return { success: false, message: "Failed to retrieve authenticated user profile." };
+    } catch (error) {
+      logout();
+      return { success: false, message: error.message || "Failed to complete Google Sign In." };
+    }
+  };
+
   const logout = () => {
     sessionStorage.removeItem("current_user");
     sessionStorage.removeItem("auth_token");
@@ -76,7 +94,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, signup, logout, updateUser }}>
+    <AuthContext.Provider value={{ currentUser, login, signup, logout, updateUser, completeGoogleAuth }}>
       {children}
     </AuthContext.Provider>
   );

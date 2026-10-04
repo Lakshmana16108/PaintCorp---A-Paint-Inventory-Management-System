@@ -303,6 +303,21 @@ const mockPool = {
       return [{ affectedRows: 0 }];
     }
 
+    // 9b. UPDATE users SET avatar = ? WHERE id = ?
+    if (sqlNorm.includes("UPDATE users SET avatar = ? WHERE id = ?")) {
+      const avatar = params[0];
+      const id = params[1];
+      const users = readJSON(FALLBACK_USERS_FILE);
+      const user = users.find(u => u.id === id);
+      if (user) {
+        user.avatar = avatar;
+        user.updated_at = new Date().toISOString();
+        writeJSON(FALLBACK_USERS_FILE, users);
+        return [{ affectedRows: 1 }];
+      }
+      return [{ affectedRows: 0 }];
+    }
+
     // 10. SELECT * FROM products
     if (sqlNorm.includes("FROM products") && !sqlNorm.startsWith("INSERT") && !sqlNorm.startsWith("UPDATE") && !sqlNorm.startsWith("DELETE")) {
       const file = path.join(__dirname, "..", "fallback_products.json");

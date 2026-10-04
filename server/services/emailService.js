@@ -12,7 +12,7 @@ const envPaths = [
 ];
 for (const envPath of envPaths) {
   if (fs.existsSync(envPath)) {
-    require("dotenv").config({ path: envPath });
+    require("dotenv").config({ path: envPath, override: true });
   }
 }
 require("dotenv").config();

@@ -35,17 +35,23 @@ export default function App() {
   const [state, dispatch] = useReducer(inventoryReducer, {
     paints: [],
     stock: [],
-    orders: []
+    orders: (() => {
+      try {
+        const raw = localStorage.getItem("paintcorp_active_orders");
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    })()
   });
 
   // Fetch live inventory data from backend MySQL database on mount
   useEffect(() => {
     let isMounted = true;
 
-    // Purge any stale legacy localStorage inventory keys to ensure MySQL is authoritative
+    // Purge any stale legacy localStorage inventory keys
     localStorage.removeItem("paint_paints");
     localStorage.removeItem("paint_stock");
-    localStorage.removeItem("paint_orders");
 
     async function loadLiveData() {
       setLoading(true);

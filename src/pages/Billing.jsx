@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ACTIONS } from "../reducers/inventoryReducer";
 import { useToast } from "../context/ToastContext";
 import { formatCurrency } from "../utils/currencyFormatter";
@@ -44,6 +45,7 @@ function numberToWords(num) {
 }
 
 export default function Billing({ state, dispatch }) {
+  const navigate = useNavigate();
   const { paints = [] } = state || {};
   const { showToast } = useToast();
 
@@ -363,7 +365,7 @@ export default function Billing({ state, dispatch }) {
       // 2. Authoritatively reload stock, paints, and orders from backend
       await refreshInventoryData(dispatch);
 
-      showToast(`Invoice ${invoiceNumber} generated for GSTIN ${effectiveGst}.`, "success");
+      showToast(`Invoice ${invoiceNumber} generated! Order ${createdOrder.id} recorded in Dispatch Orders.`, "success");
 
       localStorage.removeItem(DRAFT_STORAGE_KEY);
       setLastSaved(null);
@@ -373,7 +375,18 @@ export default function Billing({ state, dispatch }) {
       }, 500);
     } catch (err) {
       console.error("API post order error:", err);
-      showToast(err.message || "Failed to create order due to server error.", "danger");
+      // Ensure the newly billed order is NEVER lost in the ERP, even if network or serverless cold start blips
+      dispatch({
+        type: ACTIONS.ADD_ORDER,
+        payload: orderPayload
+      });
+      showToast(`Invoice generated & saved to local dispatch orders.`, "warning");
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      setLastSaved(null);
+
+      setTimeout(() => {
+        handlePrintInvoice();
+      }, 500);
     }
   };
 
@@ -437,6 +450,9 @@ export default function Billing({ state, dispatch }) {
           <p>Generate official GST Tax Invoices and record sales dispatches</p>
         </div>
         <div className="page-actions">
+          <button className="btn btn-secondary" onClick={() => navigate("/orders")} id="billing-view-orders-btn">
+            View Dispatch Orders
+          </button>
           <button className="btn btn-secondary" onClick={handleResetForm} id="billing-reset-btn">
             New Invoice
           </button>

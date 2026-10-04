@@ -24,14 +24,58 @@ const getStockStatus = (qty, minQty) => {
   return "In Stock";
 };
 
+const ORDERS_STORAGE_KEY = "paintcorp_active_orders";
+
+const getSavedOrders = () => {
+  try {
+    const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveOrders = (orders) => {
+  try {
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+  } catch (e) {}
+};
+
+const sortOrdersDesc = (orderList) => {
+  return [...orderList].sort((a, b) => {
+    const dateA = String(a.date || a.order_date || a.created_at || a.createdAt || "");
+    const dateB = String(b.date || b.order_date || b.created_at || b.createdAt || "");
+    if (dateB !== dateA) return dateB.localeCompare(dateA);
+    return String(b.id || "").localeCompare(String(a.id || ""));
+  });
+};
+
 export const inventoryReducer = (state, action) => {
   switch (action.type) {
     case ACTIONS.LOAD_DATA: {
+      const serverOrders = Array.isArray(action.payload.orders) ? action.payload.orders : [];
+      const serverOrderIds = new Set(serverOrders.map((o) => o.id));
+
+      const storedOrders = getSavedOrders();
+      const currentOrders = Array.isArray(state.orders) ? state.orders : [];
+
+      // Preserve any client-created orders that the server response does not have yet
+      const localCandidateMap = new Map();
+      [...currentOrders, ...storedOrders].forEach((o) => {
+        if (o && o.id && !serverOrderIds.has(o.id) && !localCandidateMap.has(o.id)) {
+          localCandidateMap.set(o.id, o);
+        }
+      });
+
+      const localOnlyOrders = Array.from(localCandidateMap.values());
+      const mergedOrders = sortOrdersDesc([...localOnlyOrders, ...serverOrders]);
+      saveOrders(mergedOrders);
+
       return {
         ...state,
         paints: action.payload.paints !== undefined ? action.payload.paints : state.paints,
         stock: action.payload.stock !== undefined ? action.payload.stock : state.stock,
-        orders: action.payload.orders !== undefined ? action.payload.orders : state.orders
+        orders: mergedOrders
       };
     }
 
@@ -139,8 +183,9 @@ export const inventoryReducer = (state, action) => {
 
     case ACTIONS.ADD_ORDER: {
       const newOrder = action.payload;
-      const exists = state.orders.some((o) => o.id === newOrder.id);
-      const updatedOrders = exists ? state.orders : [newOrder, ...state.orders];
+      const filteredExisting = (state.orders || []).filter((o) => o.id !== newOrder.id);
+      const updatedOrders = [newOrder, ...filteredExisting];
+      saveOrders(updatedOrders);
 
       // Deduct purchased paint quantities from client state
       const orderItems = Array.isArray(newOrder.items) && newOrder.items.length > 0
@@ -188,12 +233,13 @@ export const inventoryReducer = (state, action) => {
 
     case ACTIONS.UPDATE_ORDER_STATUS: {
       const { orderId, newStatus } = action.payload;
-      const updatedOrders = state.orders.map((o) => {
+      const updatedOrders = (state.orders || []).map((o) => {
         if (o.id === orderId) {
           return { ...o, status: newStatus };
         }
         return o;
       });
+      saveOrders(updatedOrders);
 
       return {
         ...state,

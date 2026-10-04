@@ -40,11 +40,8 @@ const FALLBACK_ORDER_ITEMS_FILE = getStoragePath("fallback_order_items.json");
 // Helper functions for fallback JSON database with memory cache + /tmp persistence
 function readJSON(file) {
   const basename = path.basename(file);
-  if (memoryStore[basename] && Array.isArray(memoryStore[basename])) {
-    return memoryStore[basename];
-  }
-
   const writablePath = getStoragePath(basename);
+
   if (fs.existsSync(writablePath)) {
     try {
       const data = JSON.parse(fs.readFileSync(writablePath, "utf8"));
@@ -53,6 +50,10 @@ function readJSON(file) {
         return data;
       }
     } catch (e) {}
+  }
+
+  if (memoryStore[basename] && Array.isArray(memoryStore[basename]) && memoryStore[basename].length > 0) {
+    return memoryStore[basename];
   }
 
   const bundledFile = path.join(__dirname, "..", basename);
@@ -667,8 +668,7 @@ const mockPool = {
 
     // 16g. General SELECT * FROM orders
     if (sqlNorm.includes("FROM orders") && !sqlNorm.startsWith("INSERT") && !sqlNorm.startsWith("UPDATE")) {
-      const file = path.join(__dirname, "..", "fallback_orders.json");
-      const list = readJSON(file);
+      const list = readJSON(FALLBACK_ORDERS_FILE);
       if (sqlNorm.includes("COUNT(*)")) {
         return [[{ count: list.length, cnt: list.length }]];
       }
@@ -686,8 +686,7 @@ const mockPool = {
 
     // 17. INSERT INTO orders
     if (sqlNorm.includes("INSERT INTO orders")) {
-      const file = path.join(__dirname, "..", "fallback_orders.json");
-      const list = readJSON(file);
+      const list = readJSON(FALLBACK_ORDERS_FILE);
       const newOrder = {
         id: params[0],
         customer_name: params[1],
@@ -704,18 +703,17 @@ const mockPool = {
       };
       // Place newest order at the very beginning
       list.unshift(newOrder);
-      writeJSON(file, list);
+      writeJSON(FALLBACK_ORDERS_FILE, list);
       return [{ affectedRows: 1 }];
     }
 
     // 18. UPDATE orders SET status = ? WHERE id = ?
     if (sqlNorm.includes("UPDATE orders SET status = ?")) {
-      const file = path.join(__dirname, "..", "fallback_orders.json");
-      const list = readJSON(file);
+      const list = readJSON(FALLBACK_ORDERS_FILE);
       const order = list.find(o => o.id === params[1]);
       if (order) {
         order.status = params[0];
-        writeJSON(file, list);
+        writeJSON(FALLBACK_ORDERS_FILE, list);
       }
       return [{ affectedRows: 1 }];
     }

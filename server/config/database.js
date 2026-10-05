@@ -217,6 +217,51 @@ const mockPool = {
       return [{ insertId: newUser.id }];
     }
 
+    // 2b. UPDATE users
+    if (sqlNorm.startsWith("UPDATE users")) {
+      const users = readJSON(FALLBACK_USERS_FILE);
+      if (sqlNorm.includes("is_active = ?") && sqlNorm.includes("WHERE id = ?")) {
+        const activeVal = Number(params[0]);
+        const id = Number(params[1]);
+        const user = users.find(u => Number(u.id) === id);
+        if (user) {
+          user.is_active = activeVal;
+          user.isActive = activeVal === 1;
+          user.updated_at = new Date().toISOString();
+          writeJSON(FALLBACK_USERS_FILE, users);
+          return [{ affectedRows: 1 }];
+        }
+        return [{ affectedRows: 0 }];
+      }
+      if (sqlNorm.includes("SET name = ?") && sqlNorm.includes("WHERE id = ?")) {
+        const id = Number(params[4]);
+        const user = users.find(u => Number(u.id) === id);
+        if (user) {
+          user.name = params[0];
+          user.mobile = params[1];
+          user.role = params[2];
+          user.is_active = Number(params[3]);
+          user.isActive = Number(params[3]) === 1;
+          user.updated_at = new Date().toISOString();
+          writeJSON(FALLBACK_USERS_FILE, users);
+          return [{ affectedRows: 1 }];
+        }
+        return [{ affectedRows: 0 }];
+      }
+      if (sqlNorm.includes("SET role =") && sqlNorm.includes("WHERE email = ?")) {
+        const role = params[0];
+        const email = params[1];
+        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+        if (user) {
+          user.role = role;
+          writeJSON(FALLBACK_USERS_FILE, users);
+          return [{ affectedRows: 1 }];
+        }
+        return [{ affectedRows: 0 }];
+      }
+      return [{ affectedRows: 1 }];
+    }
+
     // 3. UPDATE password_reset_otps SET used = 1 WHERE user_id = ?
     if (sqlNorm.includes("UPDATE password_reset_otps SET used = 1 WHERE user_id = ?")) {
       const userId = params[0];
@@ -1083,7 +1128,10 @@ async function initializeDatabase() {
       ) ENGINE=InnoDB;
     `);
 
-    // Safe column migrations on orders table
+    // Safe column migrations
+    try {
+      await pool.query("ALTER TABLE users ADD COLUMN is_active TINYINT(1) DEFAULT 1");
+    } catch (e) {}
     try {
       await pool.query("ALTER TABLE orders ADD COLUMN total_amount DECIMAL(10,2) DEFAULT NULL");
     } catch (e) {}

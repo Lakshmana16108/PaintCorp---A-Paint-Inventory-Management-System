@@ -15,5 +15,6 @@ router.get("/dashboard", adminController.getAdminDashboardData);
 router.get("/users", adminController.getAllUsers);
 router.put("/users/:id", adminController.updateUser);
 router.patch("/users/:id/status", adminController.toggleUserStatus);
+router.put("/users/:id/status", adminController.toggleUserStatus);
 
 module.exports = router;

@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.setItem("auth_token", result.token);
         sessionStorage.setItem("current_user", JSON.stringify(result.user));
         setCurrentUser(result.user);
-        return { success: true };
+        return { success: true, user: result.user };
       }
       return { success: false, message: "Invalid response from server." };
     } catch (error) {

@@ -36,6 +36,7 @@ const FALLBACK_PRODUCTS_FILE = getStoragePath("fallback_products.json");
 const FALLBACK_STOCK_FILE = getStoragePath("fallback_stock.json");
 const FALLBACK_ORDERS_FILE = getStoragePath("fallback_orders.json");
 const FALLBACK_ORDER_ITEMS_FILE = getStoragePath("fallback_order_items.json");
+const FALLBACK_STOCK_TRANSACTIONS_FILE = getStoragePath("fallback_stock_transactions.json");
 
 // Helper functions for fallback JSON database with memory cache + /tmp persistence
 function readJSON(file) {
@@ -319,6 +320,27 @@ const mockPool = {
       return [{ affectedRows: 0 }];
     }
 
+    // 9c. UPDATE users (admin user update or status toggle)
+    if (sqlNorm.startsWith("UPDATE users SET") && !sqlNorm.includes("password") && !sqlNorm.includes("avatar")) {
+      const users = readJSON(FALLBACK_USERS_FILE);
+      const id = Number(params[params.length - 1]);
+      const user = users.find(u => Number(u.id) === id);
+      if (user) {
+        if (sqlNorm.includes("is_active = ?") && params.length === 2) {
+          user.is_active = Number(params[0]);
+        } else if (params.length >= 4) {
+          user.name = params[0];
+          user.mobile = params[1];
+          user.role = params[2];
+          if (params.length >= 5) user.is_active = Number(params[3]);
+        }
+        user.updated_at = new Date().toISOString();
+        writeJSON(FALLBACK_USERS_FILE, users);
+        return [{ affectedRows: 1 }];
+      }
+      return [{ affectedRows: 0 }];
+    }
+
     // 10. SELECT * FROM products
     if (sqlNorm.includes("FROM products") && !sqlNorm.startsWith("INSERT") && !sqlNorm.startsWith("UPDATE") && !sqlNorm.startsWith("DELETE")) {
       const file = path.join(__dirname, "..", "fallback_products.json");
@@ -327,6 +349,9 @@ const mockPool = {
         list = list.filter(p => p.name && p.name.toLowerCase() === params[0].toLowerCase());
       } else if (sqlNorm.includes("WHERE id = ?") && params && params[0]) {
         list = list.filter(p => p.id === params[0]);
+      } else if (sqlNorm.includes("id") && (sqlNorm.includes("LOWER(id)") || sqlNorm.includes("REPLACE")) && params && params[0]) {
+        const target = String(params[0]).toLowerCase().replace(/[^a-z0-9]/g, "");
+        list = list.filter(p => p.id && String(p.id).toLowerCase().replace(/[^a-z0-9]/g, "") === target);
       } else if (sqlNorm.includes("LIKE") && params && params[0]) {
         const term = String(params[0]).replace(/%/g, "").toLowerCase();
         list = list.filter(p => 
@@ -438,7 +463,11 @@ const mockPool = {
         const unique = [...new Set(list.map(s => s.warehouse))].map(w => ({ warehouse: w }));
         return [unique];
       }
-      if (sqlNorm.includes("WHERE paint_id = ?")) {
+      if (sqlNorm.includes("WHERE paint_id = ? AND warehouse = ?")) {
+        const pid = params[0];
+        const wh = params[1];
+        list = list.filter(s => s.paint_id === pid && s.warehouse === wh);
+      } else if (sqlNorm.includes("WHERE paint_id = ?")) {
         const pid = params[0];
         list = list.filter(s => s.paint_id === pid);
       } else if (sqlNorm.includes("WHERE id = ?")) {
@@ -449,6 +478,25 @@ const mockPool = {
         list = list.slice(0, 1);
       }
       return [list];
+    }
+
+    // 14b. INSERT INTO warehouse_stock
+    if (sqlNorm.includes("INSERT INTO warehouse_stock")) {
+      const file = path.join(__dirname, "..", "fallback_stock.json");
+      const list = readJSON(file);
+      const newWs = {
+        id: list.length + 1,
+        paint_id: params[0],
+        paint_name: params[1],
+        brand: params[2],
+        warehouse: params[3],
+        quantity: Number(params[4]),
+        min_quantity: Number(params[5] || 15),
+        status: params[6] || "In Stock"
+      };
+      list.push(newWs);
+      writeJSON(file, list);
+      return [{ insertId: newWs.id, affectedRows: 1 }];
     }
 
     // 15. UPDATE warehouse_stock
@@ -823,6 +871,35 @@ const mockPool = {
       return [{ insertId: newItem.id, affectedRows: 1 }];
     }
 
+    // 21. SELECT FROM stock_transactions
+    if (sqlNorm.includes("FROM stock_transactions") && !sqlNorm.startsWith("INSERT") && !sqlNorm.startsWith("UPDATE")) {
+      const txs = readJSON(FALLBACK_STOCK_TRANSACTIONS_FILE);
+      if (sqlNorm.includes("WHERE paint_id = ?")) {
+        const pid = params[0];
+        return [txs.filter(t => t.paint_id === pid)];
+      }
+      return [txs];
+    }
+
+    // 22. INSERT INTO stock_transactions
+    if (sqlNorm.includes("INSERT INTO stock_transactions")) {
+      const txs = readJSON(FALLBACK_STOCK_TRANSACTIONS_FILE);
+      const newTx = {
+        id: txs.length + 1,
+        paint_id: params[0],
+        paint_name: params[1],
+        warehouse: params[2],
+        previous_stock: Number(params[3]),
+        added_quantity: Number(params[4]),
+        new_stock: Number(params[5]),
+        added_by: params[6] || "Staff",
+        created_at: new Date().toISOString()
+      };
+      txs.unshift(newTx);
+      writeJSON(FALLBACK_STOCK_TRANSACTIONS_FILE, txs);
+      return [{ insertId: newTx.id, affectedRows: 1 }];
+    }
+
     return [[]];
   },
   async getConnection() {
@@ -896,10 +973,16 @@ async function initializeDatabase() {
         username VARCHAR(100) NOT NULL UNIQUE,
         avatar LONGTEXT DEFAULT NULL,
         two_factor_enabled TINYINT(1) DEFAULT 0,
+        is_active TINYINT(1) DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB;
     `);
+
+    // Ensure is_active column exists if users table was created previously without it
+    try {
+      await pool.query("ALTER TABLE users ADD COLUMN is_active TINYINT(1) DEFAULT 1");
+    } catch (e) {}
 
     // Create OTP Reset Table
     await pool.query(`
@@ -981,6 +1064,22 @@ async function initializeDatabase() {
         price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB;
+    `);
+
+    // Create Stock Transactions Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS stock_transactions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        paint_id VARCHAR(50) NOT NULL,
+        paint_name VARCHAR(180) NOT NULL,
+        warehouse VARCHAR(100) NOT NULL,
+        previous_stock INT NOT NULL,
+        added_quantity INT NOT NULL,
+        new_stock INT NOT NULL,
+        added_by VARCHAR(150) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (paint_id) REFERENCES products(id) ON DELETE CASCADE
       ) ENGINE=InnoDB;
     `);
 

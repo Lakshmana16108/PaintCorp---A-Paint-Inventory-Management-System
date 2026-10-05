@@ -39,7 +39,11 @@ export default function Login() {
         .then((res) => {
           if (res.success) {
             showToast("Signed in with Google successfully! Welcome back.", "success");
-            navigate("/dashboard", { replace: true });
+            if (res.user?.role === "Administrator") {
+              navigate("/admin/dashboard", { replace: true });
+            } else {
+              navigate("/dashboard", { replace: true });
+            }
           } else {
             showToast(res.message || "Google authentication failed.", "danger");
             setErrors({ form: res.message });
@@ -104,7 +108,11 @@ export default function Login() {
       } else {
         localStorage.removeItem("remembered_email");
       }
-      navigate("/dashboard");
+      if (result.user?.role === "Administrator") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     } else {
       showToast(result.message || "Login failed.", "danger");
       setErrors({ form: result.message });

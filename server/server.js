@@ -8,6 +8,7 @@ const stockRoutes = require("./routes/stockRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const salesRoutes = require("./routes/salesRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const fs = require("fs");
 const path = require("path");
 const envPaths = [
@@ -106,6 +107,8 @@ app.use("/api/ai", aiRoutes);
 app.use("/ai", aiRoutes);
 app.use("/api/corp-ai", aiRoutes);
 app.use("/corp-ai", aiRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/admin", adminRoutes);
 
 // Database initialization and server startup
 async function startServer() {

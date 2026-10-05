@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { ThemeContext } from "../context/ThemeContext";
+import { AuthContext } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
 // Define sensible defaults for settings
@@ -56,7 +57,10 @@ const DEFAULT_SETTINGS = {
 
 export default function Settings() {
   const { theme, setTheme } = useContext(ThemeContext);
+  const { currentUser } = useContext(AuthContext);
   const { showToast } = useToast();
+
+  const isAdmin = currentUser?.role === "Administrator";
 
   const [activeCategory, setActiveCategory] = useState("general");
   const [settings, setSettings] = useState(() => {
@@ -121,6 +125,12 @@ export default function Settings() {
   };
 
   const saveSection = (category) => {
+    // Administrator-only guard for company-wide settings
+    if (["general", "billing", "inventory"].includes(category) && !isAdmin) {
+      showToast("Only Administrators have permission to modify company-wide configuration.", "warning");
+      return;
+    }
+
     // Validation
     if (category === "general") {
       const { companyName, businessEmail, phoneNumber, gstNumber } = settings.general;
@@ -230,6 +240,7 @@ export default function Settings() {
               </svg>
             </span>
             <span>General</span>
+            <span className="badge badge-info" style={{ marginLeft: "auto", fontSize: "0.6rem", padding: "0.15rem 0.4rem" }}>Admin</span>
           </button>
 
           <button 
@@ -243,6 +254,7 @@ export default function Settings() {
               </svg>
             </span>
             <span>Billing</span>
+            <span className="badge badge-info" style={{ marginLeft: "auto", fontSize: "0.6rem", padding: "0.15rem 0.4rem" }}>Admin</span>
           </button>
 
           <button 
@@ -256,6 +268,7 @@ export default function Settings() {
               </svg>
             </span>
             <span>Inventory</span>
+            <span className="badge badge-info" style={{ marginLeft: "auto", fontSize: "0.6rem", padding: "0.15rem 0.4rem" }}>Admin</span>
           </button>
 
           <button 
@@ -300,6 +313,25 @@ export default function Settings() {
 
         {/* RIGHT COLUMN: Settings Content Area */}
         <section className="settings-content-card">
+          {!isAdmin && ["general", "billing", "inventory"].includes(activeCategory) && (
+            <div
+              style={{
+                padding: "0.75rem 1rem",
+                backgroundColor: "rgba(37, 99, 235, 0.08)",
+                borderRadius: "var(--radius-md)",
+                marginBottom: "1.25rem",
+                border: "1px solid var(--border-color)",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem"
+              }}
+            >
+              <span style={{ fontSize: "1.1rem" }}>🔒</span>
+              <span style={{ fontSize: "0.85rem", color: "var(--text-main)" }}>
+                Company-wide configuration is restricted to System Administrators. Viewing in read-only mode for {currentUser?.role || "Staff"}.
+              </span>
+            </div>
+          )}
           {/* GENERAL SETTINGS */}
           {activeCategory === "general" && (
             <div id="settings-section-general">
@@ -404,6 +436,8 @@ export default function Settings() {
                 <button 
                   className="btn btn-primary" 
                   onClick={() => saveSection("general")}
+                  disabled={!isAdmin}
+                  title={!isAdmin ? "Administrator role required to modify company information" : "Save Changes"}
                   id="save-general-settings-btn"
                 >
                   Save Changes
@@ -567,6 +601,8 @@ export default function Settings() {
                 <button 
                   className="btn btn-primary" 
                   onClick={() => saveSection("billing")}
+                  disabled={!isAdmin}
+                  title={!isAdmin ? "Administrator role required to modify billing configuration" : "Save Changes"}
                   id="save-billing-settings-btn"
                 >
                   Save Changes
@@ -702,6 +738,8 @@ export default function Settings() {
                 <button 
                   className="btn btn-primary" 
                   onClick={() => saveSection("inventory")}
+                  disabled={!isAdmin}
+                  title={!isAdmin ? "Administrator role required to modify inventory parameters" : "Save Changes"}
                   id="save-inventory-settings-btn"
                 >
                   Save Changes

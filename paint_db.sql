@@ -88,6 +88,20 @@ CREATE TABLE order_items (
  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- 7. STOCK TRANSACTIONS TABLE
+CREATE TABLE IF NOT EXISTS stock_transactions (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ paint_id VARCHAR(50) NOT NULL,
+ paint_name VARCHAR(180) NOT NULL,
+ warehouse VARCHAR(100) NOT NULL,
+ previous_stock INT NOT NULL,
+ added_quantity INT NOT NULL,
+ new_stock INT NOT NULL,
+ added_by VARCHAR(150) NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (paint_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- =========================================================
 -- SEED DATA (Synchronized from PaintCorp Production Dataset)
 -- =========================================================

@@ -35,6 +35,71 @@ async function getAllPaints(req, res) {
 }
 
 /**
+ * GET /api/paints/:id
+ * Fetch a single paint product and its warehouse stock breakdown by code/SKU
+ */
+async function getPaintById(req, res) {
+  const { id } = req.params;
+  if (!id || !id.trim()) {
+    return res.status(400).json({ success: false, error: "Paint code is required." });
+  }
+
+  const cleanId = id.trim();
+  const normalizedId = cleanId.replace(/[^a-zA-Z0-9]/g, "");
+
+  const pool = getPool();
+  try {
+    // Search exact ID or normalized alphanumeric ID (case-insensitive)
+    const [prodRows] = await pool.query(
+      "SELECT * FROM products WHERE LOWER(id) = LOWER(?) OR LOWER(REPLACE(id, '-', '')) = LOWER(?) LIMIT 1",
+      [cleanId, normalizedId]
+    );
+
+    if (prodRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Paint code "${cleanId}" was not found.`
+      });
+    }
+
+    const p = prodRows[0];
+
+    // Fetch warehouse stock breakdown for this paint product
+    const [wsRows] = await pool.query(
+      "SELECT id, warehouse, quantity, min_quantity, status FROM warehouse_stock WHERE paint_id = ? ORDER BY warehouse ASC",
+      [p.id]
+    );
+
+    const warehouseStocks = wsRows.map((ws) => ({
+      id: ws.id,
+      warehouse: ws.warehouse,
+      quantity: Number(ws.quantity),
+      minQuantity: Number(ws.min_quantity),
+      status: ws.status
+    }));
+
+    const productData = {
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      color: p.color,
+      finish: p.finish,
+      price: Number(p.price),
+      quantity: Number(p.quantity),
+      status: p.status,
+      created_at: p.created_at,
+      warehouseStocks
+    };
+
+    return res.json({ success: true, product: productData });
+  } catch (error) {
+    console.error("Get paint by ID error:", error);
+    return res.status(500).json({ success: false, error: "Failed to fetch paint details." });
+  }
+}
+
+/**
  * POST /api/paints
  * Create a new paint product and initialize its warehouse stock record in a transaction
  */
@@ -225,6 +290,7 @@ async function deletePaint(req, res) {
 
 module.exports = {
   getAllPaints,
+  getPaintById,
   createPaint,
   updatePaint,
   deletePaint

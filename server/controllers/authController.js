@@ -77,11 +77,13 @@ async function signup(req, res) {
 
     const username = email.split("@")[0] + "_" + Math.floor(Math.random() * 1000);
     const hashedPassword = await hashPassword(password);
+    // Security: Public registrations cannot grant Administrator privileges
+    const sanitizedRole = (role === "Administrator") ? "Staff" : (role || "Staff");
 
     await pool.query(
       `INSERT INTO users (name, email, password, role, mobile, username, avatar, two_factor_enabled) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, email, hashedPassword, role || "Staff", mobile, username, "", 0]
+      [name, email, hashedPassword, sanitizedRole, mobile, username, "", 0]
     );
 
     return res.status(201).json({ success: true, message: "User registered successfully." });

@@ -149,9 +149,8 @@ export default function SignUp() {
                 onChange={(e) => setRole(e.target.value)}
                 style={{ padding: "0.625rem 2rem 0.625rem 0.75rem" }}
               >
-                <option value="Administrator">Administrator</option>
-                <option value="Warehouse Manager">Warehouse Manager</option>
                 <option value="Staff">Staff</option>
+                <option value="Warehouse Manager">Warehouse Manager</option>
               </select>
             </div>
           </div>

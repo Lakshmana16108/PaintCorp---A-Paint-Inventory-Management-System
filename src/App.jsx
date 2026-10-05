@@ -26,6 +26,9 @@ import Settings from "./pages/Settings";
 import OrderDetails from "./pages/OrderDetails";
 import SalesDashboard from "./pages/SalesDashboard";
 import CorpAI from "./pages/CorpAI";
+import AdminDashboard from "./pages/AdminDashboard";
+import UserManagement from "./pages/UserManagement";
+import AdminRoute from "./components/AdminRoute";
 
 export default function App() {
   // Loading spinner state
@@ -133,6 +136,12 @@ export default function App() {
             <Route path="/sales-analysis" element={<SalesDashboard />} />
             <Route path="/corp-ai" element={<CorpAI />} />
             <Route path="/ai" element={<CorpAI />} />
+
+            {/* Administrator Management Control Center */}
+            <Route element={<AdminRoute />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<UserManagement />} />
+            </Route>
           </Route>
         </Route>
 

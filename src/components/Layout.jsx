@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Breadcrumbs from "./Breadcrumbs";
+import CorpAIFloatingWidget from "./CorpAIFloatingWidget";
 
 export default function Layout({ lowStockAlerts }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -76,6 +77,9 @@ export default function Layout({ lowStockAlerts }) {
           </svg>
         </button>
       )}
+
+      {/* Floating Corp AI Toggle Icon & Assistant Widget */}
+      <CorpAIFloatingWidget />
     </div>
   );
 }

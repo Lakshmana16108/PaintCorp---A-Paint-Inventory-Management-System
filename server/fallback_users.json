@@ -3,7 +3,7 @@
     "id": 1,
     "name": "PaintCorp Administrator",
     "email": "admin@paintcorp.com",
-    "password": "$2a$10$1S2yAggPWbEjCcKtOoBhjuc.bSWSHM./DXvdVLke45l2p/AlBxWnK",
+    "password": "$2a$10$O.LDGpxVYYbn3QjyZSbW9OnByYXt5KU72MhxtbhCpMbnTqUta7RjC",
     "role": "Administrator",
     "mobile": "9876543210",
     "username": "erp_admin",
